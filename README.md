@@ -139,6 +139,7 @@ func (s *Server) handleExecute(w http.ResponseWriter, r *http.Request) {
         tasks = append(tasks, enzu.NewTask(taskDescription, agent))
     }
 }
+```
 
 ## 🚀 Capability Domains
 
