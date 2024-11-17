@@ -1,140 +1,234 @@
-# enzu
-
-# Enzu
+# Enzu: Multi-Agent Framework for AI Systems
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/teilomillet/enzu.svg)](https://pkg.go.dev/github.com/teilomillet/enzu)
 [![Go Report Card](https://goreportcard.com/badge/github.com/teilomillet/enzu)](https://goreportcard.com/report/github.com/teilomillet/enzu)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Enzu is a Go framework for building AI applications with multi-agent collaboration, parallel task execution, and extensible tool integration. It enables the creation of complex AI systems that can work together to solve problems more effectively than single agents.
+Enzu is a declarative Go framework designed for building sophisticated multi-agent AI systems. It enables LLMs and AI agents to collaborate, execute parallel tasks, and leverage extensible tools while maintaining clear hierarchies and communication patterns.
 
-## 🌟 Key Features
+## 🎯 Framework Capabilities
 
-- **Multi-Agent Synergies**: Create and manage groups of specialized AI agents that work together towards common objectives
-- **Parallel Task Execution**: Execute tasks concurrently for improved performance
-- **Flexible Tool Integration**: Extensible tool system with built-in registry and inheritance
-- **Comprehensive Logging**: Detailed logging system with multiple levels of verbosity
-- **HTTP Server Support**: Built-in HTTP server capabilities for creating API endpoints
-- **LLM Integration**: Seamless integration with Large Language Models (currently supporting OpenAI)
+### Agent System Architecture
+- **Hierarchical Agent Organization**: Define agent roles, responsibilities, and relationships
+- **Dynamic Task Distribution**: Automatically route tasks to specialized agents
+- **Parallel Processing**: Execute multiple agent tasks concurrently
+- **State Management**: Track and maintain agent states across interactions
 
-## 📋 Table of Contents
+### Tool Integration System
+- **Declarative Tool Registry**: Register and manage tools with clear interfaces
+- **Inheritance Patterns**: Tools can be inherited and shared across agent hierarchies
+- **Thread-Safe Operations**: Concurrent tool access with built-in safety mechanisms
+- **Custom Tool Creation**: Extend functionality through a standardized tool interface
 
-- [Installation](#installation)
-- [Quick Start](#quick-start)
-- [Core Concepts](#core-concepts)
-- [Examples](#examples)
-- [Documentation](#documentation)
-- [Contributing](#contributing)
-- [License](#license)
+### Execution Patterns
+- **Synergy-Based Collaboration**: Group agents into task-focused collaborative units
+- **Context Propagation**: Share context and state across agent boundaries
+- **Parallel Task Execution**: Optimize performance through concurrent processing
+- **Error Recovery**: Built-in retry mechanisms and error handling patterns
 
-## 🚀 Installation
+### Communication Infrastructure
+- **HTTP Server Integration**: Built-in REST API capabilities
+- **Structured Message Passing**: Type-safe communication between agents
+- **Event System**: Publish-subscribe patterns for agent coordination
+- **Logging System**: Comprehensive tracing and debugging capabilities
+
+## 🔧 Core Integration Patterns
+
+### 1. Research and Analysis Pattern
+```go
+// Pattern: Distributed Research System
+type ResearchRequest struct {
+    Topic       string   `json:"topic"`
+    Subtopics   []string `json:"subtopics,omitempty"`
+    MaxResults  int      `json:"max_results,omitempty"`
+    TimeoutSecs int      `json:"timeout_secs,omitempty"`
+}
+
+// Create specialized research agents
+researcher := enzu.NewAgent("Primary Researcher",
+    "Deep research and fact verification",
+    llm,
+    enzu.WithToolLists("ResearchTool"),
+    enzu.WithParallelExecution(true),
+)
+
+analyst := enzu.NewAgent("Data Analyst",
+    "Process and analyze research results",
+    llm,
+    enzu.WithToolLists("AnalysisTool"),
+    enzu.WithParallelExecution(true),
+)
+```
+
+### 2. Self-Aware System Pattern
+```go
+// Pattern: Self-Aware Interactive System
+manager := enzu.NewSynergyManager("Self-Aware System", llm, logger)
+
+// Define capability domains
+researchSynergy := createDomainSynergy("Research", llm, logger)
+analysisSynergy := createDomainSynergy("Analysis", llm, logger)
+creativeSynergy := createDomainSynergy("Creative", llm, logger)
+
+// Register domains
+manager.AddSynergy(researchSynergy)
+manager.AddSynergy(analysisSynergy)
+manager.AddSynergy(creativeSynergy)
+```
+
+### 3. Tool Integration Pattern
+```go
+// Pattern: Extensible Tool System
+exaSearchOptions := tools.ExaSearchOptions{
+    NumResults: 5,
+    Type:      "neural",
+    Contents: tools.Contents{
+        Text: true,
+    },
+    UseAutoprompt:      true,
+    StartPublishedDate: "2023-01-01T00:00:00.000Z",
+}
+tools.RegisterTool("ResearchTool", exaSearchOptions)
+```
+
+### 4. API Integration Pattern
+```go
+// Pattern: Multi-Agent API Server
+type Server struct {
+    synergy *enzu.Synergy
+    logger  *enzu.Logger
+}
+
+// Initialize server with parallel processing capabilities
+func NewServer() (*Server, error) {
+    // Create research agents with specific roles
+    researchAgent1 := enzu.NewAgent("Research Agent 1",
+        "Agent specialized in AI research",
+        llm,
+        enzu.WithToolLists("ResearchTool"),
+        enzu.WithParallelExecution(true),
+    )
+    researchAgent2 := enzu.NewAgent("Research Agent 2",
+        "Agent specialized in startup research",
+        llm,
+        enzu.WithToolLists("ResearchTool"),
+        enzu.WithParallelExecution(true),
+    )
+
+    // Create parallel processing synergy
+    synergy := enzu.NewSynergy(
+        "Parallel AI Research",
+        llm,
+        enzu.WithAgents(researchAgent1, researchAgent2),
+        enzu.WithLogger(logger),
+    )
+
+    return &Server{synergy: synergy, logger: logger}, nil
+}
+
+// Handle parallel task execution
+func (s *Server) handleExecute(w http.ResponseWriter, r *http.Request) {
+    var request struct {
+        Tasks []string `json:"tasks"`
+    }
+    
+    // Distribute tasks among agents
+    agents := s.synergy.GetAgents()
+    for i, taskDescription := range request.Tasks {
+        agent := agents[i%len(agents)] // Round-robin distribution
+        tasks = append(tasks, enzu.NewTask(taskDescription, agent))
+    }
+}
+
+## 🚀 Capability Domains
+
+### 1. Research & Information Retrieval
+- Neural search integration (`ExaSearch` tool)
+- Multi-agent research coordination
+- Parallel information gathering
+- Research result synthesis
+
+### 2. Task Management & Execution
+- Multi-agent task distribution
+- Parallel task execution
+- Progress tracking
+- Result aggregation
+
+### 3. Web Content Processing
+- URL content fetching (`FetchURL` tool)
+- HTML parsing and extraction
+- CSS selector-based targeting
+- Structured data collection
+
+### 4. Synergy Management
+- Multi-synergy orchestration
+- Result synthesis across synergies
+- Team-based agent organization
+- Cross-team coordination
+- Hierarchical task execution
+
+### 5. Team Organization
+- Role-specialized agents
+- Team-based synergies
+- Domain-specific agent groups
+- Task-team alignment
+
+### 6. API Integration & Scaling
+- **Parallel Task Distribution**
+  - Round-robin task assignment
+  - Load-balanced processing
+  - Concurrent execution
+  - Real-time response handling
+
+- **HTTP Service Integration**
+  - RESTful endpoints
+  - JSON request/response
+  - Error handling patterns
+  - Status monitoring
+
+- **Multi-Agent Coordination**
+  - Role-based agent assignment
+  - Task synchronization
+  - Result aggregation
+  - State management
+
+## 📦 Installation
 
 ```bash
 go get github.com/teilomillet/enzu
 ```
 
-## 🎯 Quick Start
+## 📚 Integration Resources
 
-Here's a simple example to get you started:
+### Core Documentation
+- `/docs`: Architecture and integration guides
+- `/docs/tutorials`: Step-by-step implementation patterns
+- `/examples`: Reference implementations and use cases
 
-```go
-package main
+### Example Implementations
+1. Research Assistant System (`examples/8_research_assistant_example.go`)
+2. Self-Aware System (`examples/7_manager_mode_example.go`)
+3. Parallel Processing System (`examples/4_parallel_example.go`)
+4. Tool Integration System (`examples/3_tools_example.go`)
+5. API Integration System (`examples/6_api_example.go`)
 
-import (
-    "context"
-    "log"
-    "os"
-    "github.com/teilomillet/enzu"
-    "github.com/teilomillet/gollm"
-)
+### Integration Patterns
+1. **HTTP API Integration**
+   - REST endpoint creation
+   - Request/Response handling
+   - Timeout management
+   - Error recovery
+   - Round-robin task distribution
+   - Load balancing strategies
 
-func main() {
-    // Initialize LLM
-    llm, err := gollm.NewLLM(
-        gollm.SetProvider("openai"),
-        gollm.SetModel("gpt-4o-mini"),
-        gollm.SetAPIKey(os.Getenv("OPENAI_API_KEY")),
-    )
-    if err != nil {
-        log.Fatal(err)
-    }
+2. **Tool Registry Integration**
+   - Tool registration
+   - Capability inheritance
+   - Access control
+   - Resource management
 
-    // Create agents
-    analyst := enzu.NewAgent("Analyst", "Analyze data", llm)
-    strategist := enzu.NewAgent("Strategist", "Develop strategies", llm)
-
-    // Create synergy
-    synergy := enzu.NewSynergy(
-        "Market Analysis",
-        llm,
-        enzu.WithAgents(analyst, strategist),
-        enzu.WithTasks(
-            enzu.NewTask("Analyze market trends", analyst),
-            enzu.NewTask("Develop strategy", strategist),
-        ),
-    )
-
-    // Execute
-    results, err := synergy.Execute(context.Background())
-    if err != nil {
-        log.Fatal(err)
-    }
-
-    log.Printf("Results: %v", results)
-}
-```
-
-## 🧩 Core Concepts
-
-### Agents
-Agents are specialized AI entities with specific roles and capabilities. Each agent can:
-- Access specific tools
-- Execute tasks in parallel
-- Inherit tools from their parent synergy
-
-### Synergies
-Synergies are collaborative groups of agents working together. They provide:
-- Task coordination
-- Resource sharing
-- Result synthesis
-
-### Tools
-Tools are reusable functions that agents can leverage:
-- Organized in tool lists
-- Inheritance system
-- Thread-safe registry
-
-### Tasks
-Tasks represent specific work items that need to be completed:
-- Assigned to specific agents
-- Can be executed in parallel
-- Support context sharing
-
-## 📚 Examples
-
-### Creating a Tool
-```go
-enzu.NewTool(
-    "CurrentTime",
-    "Returns the current time",
-    func(args ...interface{}) (interface{}, error) {
-        return time.Now().Format(time.RFC3339), nil
-    },
-    "TimeTool",
-)
-```
-
-### Parallel Execution
-```go
-agent := enzu.NewAgent("FastAgent", "Executes tasks in parallel", llm,
-    enzu.WithParallelExecution(true),
-)
-```
-
-### HTTP Server
-```go
-server := NewServer()
-http.HandleFunc("/execute", server.handleExecute)
-http.ListenAndServe(":8080", nil)
-```
-
+3. **Agent Collaboration**
+   - Task distribution
+   - Result synthesis
+   - Context sharing
+   - Error handling
