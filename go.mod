@@ -3,6 +3,8 @@ module github.com/teilomillet/enzu
 go 1.23.1
 
 require (
+	github.com/PuerkitoBio/goquery v1.10.0 // indirect
+	github.com/andybalholm/cascadia v1.3.2 // indirect
 	github.com/bahlo/generic-list-go v0.2.0 // indirect
 	github.com/buger/jsonparser v1.1.1 // indirect
 	github.com/caarlos0/env/v11 v11.2.2 // indirect

@@ -23,6 +23,11 @@ func NewTask(description string, agent *Agent, context ...*Task) *Task {
 	}
 }
 
+// Description returns the task description
+func (t *Task) Description() string {
+	return t.description
+}
+
 // TaskExecutor defines the interface for executing tasks
 type TaskExecutor interface {
 	ExecuteTask(ctx context.Context, task *Task, taskContext map[string]string, logger *Logger) (string, error)
