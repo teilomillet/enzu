@@ -1,0 +1,39 @@
+objective: "Research and analyze technical topics"
+llm:
+  type: "gpt4"
+  parameters:
+    api_key: "${OPENAI_API_KEY}"
+    temperature: 0.7
+    max_tokens: 2000
+
+agents:
+  - name: "researcher"
+    role: "Research technical topics and gather information"
+    llm:
+      type: "gpt4"
+      parameters:
+        api_key: "${OPENAI_API_KEY}"
+        temperature: 0.5
+    tool_lists:
+      - "web_search"
+      - "document_reader"
+    inherit_synergy_tools: true
+    parallel: false
+
+  - name: "analyzer"
+    role: "Analyze and synthesize research findings"
+    llm:
+      type: "gpt4"
+      parameters:
+        api_key: "${OPENAI_API_KEY}"
+        temperature: 0.3
+    tool_lists:
+      - "text_analysis"
+      - "summary_generator"
+    inherit_synergy_tools: true
+    parallel: false
+
+tool_lists:
+  - "file_operations"
+  - "markdown_writer"
+parallel: false
