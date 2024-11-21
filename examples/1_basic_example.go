@@ -35,21 +35,52 @@ func main() {
 	// Create a logger for Enzu
 	logger := enzu.NewLogger(enzu.LogLevelWarn)
 
+	// Register tools
+	enzu.NewTool(
+		"WebSearch",
+		"Performs web searches to gather market intelligence",
+		func(args ...interface{}) (interface{}, error) {
+			if len(args) != 1 {
+				return nil, fmt.Errorf("WebSearch requires 1 argument (search query)")
+			}
+			query, ok := args[0].(string)
+			if !ok {
+				return nil, fmt.Errorf("Search query must be a string")
+			}
+			return "Web search results for: " + query, nil
+		},
+		"WebSearchTools",
+	)
+
+	enzu.NewTool(
+		"StrategyAnalysis",
+		"Analyzes market data to develop AI-focused marketing strategies",
+		func(args ...interface{}) (interface{}, error) {
+			if len(args) != 1 {
+				return nil, fmt.Errorf("StrategyAnalysis requires 1 argument (market data)")
+			}
+			data, ok := args[0].(string)
+			if !ok {
+				return nil, fmt.Errorf("Market data must be a string")
+			}
+			return "Strategy analysis for: " + data, nil
+		},
+		"StrategyTools",
+	)
+
 	// Create agents
 	marketAnalyst := enzu.NewAgent(
 		"Lead Market Analyst",
 		"Market Research Specialist",
 		llm,
-		enzu.WithCapabilities(&WebSearchCapability{}),
+		enzu.WithToolLists("WebSearchTools"),
 	)
 
 	marketingStrategist := enzu.NewAgent(
 		"Chief Marketing Strategist",
 		"Marketing Strategy Expert",
 		llm,
-		enzu.WithEnhancement(&enzu.EnhancementConfig{
-			Instructions: "Focus on innovative AI-driven marketing strategies",
-		}),
+		enzu.WithToolLists("StrategyTools"),
 	)
 
 	contentCreator := enzu.NewAgent(
@@ -96,12 +127,4 @@ func main() {
 	for task, result := range results {
 		fmt.Printf("Task: %s\nResult: %s\n\n", task, result)
 	}
-}
-
-// WebSearchCapability is a simple implementation of the Capability interface
-type WebSearchCapability struct{}
-
-func (w *WebSearchCapability) Execute(ctx context.Context, input string) (string, error) {
-	// Implement web search logic here
-	return "Web search results for: " + input, nil
 }
