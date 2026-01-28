@@ -1,0 +1,309 @@
+{
+  "$defs": {
+    "Budget": {
+      "additionalProperties": false,
+      "properties": {
+        "fallback_providers": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Fallback Providers"
+        },
+        "max_cost_usd": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Cost Usd"
+        },
+        "max_output_tokens": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Output Tokens"
+        },
+        "max_seconds": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Seconds"
+        },
+        "max_total_tokens": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Total Tokens"
+        }
+      },
+      "title": "Budget",
+      "type": "object"
+    },
+    "SuccessCriteria": {
+      "additionalProperties": false,
+      "description": "Defines when a task is considered complete.\n\nTwo modes:\n1. Mechanical checks: required_substrings, required_regex, min_word_count\n   - Predefined, deterministic verification\n2. Goal-based: goal field\n   - Model self-judges whether goal is achieved\n   - Used when user provides intent rather than explicit checks\n\nAt least one of these must be specified.",
+      "properties": {
+        "case_insensitive": {
+          "default": false,
+          "title": "Case Insensitive",
+          "type": "boolean"
+        },
+        "goal": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Goal"
+        },
+        "min_word_count": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Min Word Count"
+        },
+        "required_regex": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Required Regex",
+          "type": "array"
+        },
+        "required_substrings": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Required Substrings",
+          "type": "array"
+        }
+      },
+      "title": "SuccessCriteria",
+      "type": "object"
+    },
+    "TaskSpecInput": {
+      "additionalProperties": false,
+      "properties": {
+        "budget": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Budget"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional budget. Defaults inject max_output_tokens."
+        },
+        "input_text": {
+          "description": "Task prompt text.",
+          "title": "Input Text",
+          "type": "string"
+        },
+        "max_output_tokens": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Fallback for budget.max_tokens when budget is missing.",
+          "title": "Max Output Tokens"
+        },
+        "metadata": {
+          "additionalProperties": true,
+          "description": "Free-form metadata passed to the engine.",
+          "title": "Metadata",
+          "type": "object"
+        },
+        "model": {
+          "description": "Provider model identifier.",
+          "title": "Model",
+          "type": "string"
+        },
+        "success_criteria": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SuccessCriteria"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional verification checks. Defaults inject min_word_count."
+        },
+        "task_id": {
+          "description": "Client-generated task id.",
+          "title": "Task Id",
+          "type": "string"
+        },
+        "temperature": {
+          "anyOf": [
+            {
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Sampling temperature override.",
+          "title": "Temperature"
+        }
+      },
+      "required": [
+        "task_id",
+        "input_text",
+        "model"
+      ],
+      "title": "TaskSpecInput",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "context": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "RLM context string (alias: data).",
+      "title": "Context"
+    },
+    "context_file": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "CLI-only path to load context for RLM mode.",
+      "title": "Context File"
+    },
+    "data": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Alias for context.",
+      "title": "Data"
+    },
+    "fs_root": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "CLI-only root path for automode.",
+      "title": "Fs Root"
+    },
+    "mode": {
+      "default": "chat",
+      "description": "chat|rlm|automode. RLM requires context/data.",
+      "enum": [
+        "chat",
+        "rlm",
+        "automode"
+      ],
+      "title": "Mode",
+      "type": "string"
+    },
+    "model": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Optional override for task.model.",
+      "title": "Model"
+    },
+    "provider": {
+      "description": "Provider name from the registry.",
+      "title": "Provider",
+      "type": "string"
+    },
+    "task": {
+      "$ref": "#/$defs/TaskSpecInput",
+      "description": "Task payload."
+    }
+  },
+  "required": [
+    "provider",
+    "task"
+  ],
+  "title": "RunPayload",
+  "type": "object"
+}

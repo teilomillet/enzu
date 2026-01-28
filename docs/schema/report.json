@@ -1,0 +1,468 @@
+{
+  "execution_report": {
+    "$defs": {
+      "BudgetUsage": {
+        "additionalProperties": false,
+        "properties": {
+          "cost_usd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost Usd"
+          },
+          "elapsed_seconds": {
+            "title": "Elapsed Seconds",
+            "type": "number"
+          },
+          "limits_exceeded": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Limits Exceeded",
+            "type": "array"
+          },
+          "output_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output Tokens"
+          },
+          "total_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Tokens"
+          },
+          "input_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Input Tokens"
+          }
+        },
+        "required": [
+          "elapsed_seconds",
+          "output_tokens",
+          "total_tokens",
+          "cost_usd"
+        ],
+        "title": "BudgetUsage",
+        "type": "object"
+      },
+      "ProgressEvent": {
+        "additionalProperties": false,
+        "properties": {
+          "data": {
+            "additionalProperties": true,
+            "title": "Data",
+            "type": "object"
+          },
+          "is_partial": {
+            "default": false,
+            "title": "Is Partial",
+            "type": "boolean"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "phase": {
+            "enum": [
+              "start",
+              "generation",
+              "verification",
+              "complete",
+              "error"
+            ],
+            "title": "Phase",
+            "type": "string"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "title": "Timestamp",
+            "type": "string"
+          }
+        },
+        "required": [
+          "phase",
+          "message"
+        ],
+        "title": "ProgressEvent",
+        "type": "object"
+      },
+      "TrajectoryStep": {
+        "additionalProperties": false,
+        "properties": {
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "finished_at": {
+            "format": "date-time",
+            "title": "Finished At",
+            "type": "string"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "request": {
+            "title": "Request",
+            "type": "string"
+          },
+          "response": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Response"
+          },
+          "started_at": {
+            "format": "date-time",
+            "title": "Started At",
+            "type": "string"
+          },
+          "step_index": {
+            "title": "Step Index",
+            "type": "integer"
+          },
+          "usage": {
+            "additionalProperties": true,
+            "title": "Usage",
+            "type": "object"
+          }
+        },
+        "required": [
+          "step_index",
+          "provider",
+          "model",
+          "request",
+          "response",
+          "error",
+          "started_at",
+          "finished_at"
+        ],
+        "title": "TrajectoryStep",
+        "type": "object"
+      },
+      "VerificationResult": {
+        "additionalProperties": false,
+        "properties": {
+          "checked_at": {
+            "format": "date-time",
+            "title": "Checked At",
+            "type": "string"
+          },
+          "passed": {
+            "title": "Passed",
+            "type": "boolean"
+          },
+          "reasons": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Reasons",
+            "type": "array"
+          }
+        },
+        "required": [
+          "passed"
+        ],
+        "title": "VerificationResult",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "properties": {
+      "budget_usage": {
+        "$ref": "#/$defs/BudgetUsage"
+      },
+      "errors": {
+        "items": {
+          "type": "string"
+        },
+        "title": "Errors",
+        "type": "array"
+      },
+      "model": {
+        "title": "Model",
+        "type": "string"
+      },
+      "output_text": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Output Text"
+      },
+      "progress_events": {
+        "items": {
+          "$ref": "#/$defs/ProgressEvent"
+        },
+        "title": "Progress Events",
+        "type": "array"
+      },
+      "provider": {
+        "title": "Provider",
+        "type": "string"
+      },
+      "success": {
+        "title": "Success",
+        "type": "boolean"
+      },
+      "task_id": {
+        "title": "Task Id",
+        "type": "string"
+      },
+      "trajectory": {
+        "items": {
+          "$ref": "#/$defs/TrajectoryStep"
+        },
+        "title": "Trajectory",
+        "type": "array"
+      },
+      "verification": {
+        "$ref": "#/$defs/VerificationResult"
+      }
+    },
+    "required": [
+      "success",
+      "task_id",
+      "provider",
+      "model",
+      "output_text",
+      "verification",
+      "budget_usage"
+    ],
+    "title": "ExecutionReport",
+    "type": "object"
+  },
+  "rlm_execution_report": {
+    "$defs": {
+      "BudgetUsage": {
+        "additionalProperties": false,
+        "properties": {
+          "cost_usd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost Usd"
+          },
+          "elapsed_seconds": {
+            "title": "Elapsed Seconds",
+            "type": "number"
+          },
+          "limits_exceeded": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Limits Exceeded",
+            "type": "array"
+          },
+          "output_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output Tokens"
+          },
+          "total_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Tokens"
+          },
+          "input_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Input Tokens"
+          }
+        },
+        "required": [
+          "elapsed_seconds",
+          "output_tokens",
+          "total_tokens",
+          "cost_usd"
+        ],
+        "title": "BudgetUsage",
+        "type": "object"
+      },
+      "RLMStep": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Code"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "model_output": {
+            "title": "Model Output",
+            "type": "string"
+          },
+          "prompt": {
+            "title": "Prompt",
+            "type": "string"
+          },
+          "stdout": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stdout"
+          },
+          "step_index": {
+            "title": "Step Index",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "step_index",
+          "prompt",
+          "model_output",
+          "code",
+          "stdout",
+          "error"
+        ],
+        "title": "RLMStep",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "properties": {
+      "answer": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Answer"
+      },
+      "budget_usage": {
+        "$ref": "#/$defs/BudgetUsage"
+      },
+      "errors": {
+        "items": {
+          "type": "string"
+        },
+        "title": "Errors",
+        "type": "array"
+      },
+      "model": {
+        "title": "Model",
+        "type": "string"
+      },
+      "provider": {
+        "title": "Provider",
+        "type": "string"
+      },
+      "steps": {
+        "items": {
+          "$ref": "#/$defs/RLMStep"
+        },
+        "title": "Steps",
+        "type": "array"
+      },
+      "success": {
+        "title": "Success",
+        "type": "boolean"
+      },
+      "task_id": {
+        "title": "Task Id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "success",
+      "task_id",
+      "provider",
+      "model",
+      "answer",
+      "budget_usage"
+    ],
+    "title": "RLMExecutionReport",
+    "type": "object"
+  }
+}

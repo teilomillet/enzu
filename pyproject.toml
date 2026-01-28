@@ -1,0 +1,88 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "enzu"
+version = "0.2.0"
+description = "AI delegation orchestration. Tasks as budgeted jobs, not conversations."
+readme = "README.md"
+license = {text = "Apache-2.0"}
+requires-python = ">=3.9"
+authors = [
+    {name = "teilomillet"}
+]
+keywords = ["llm", "ai", "orchestration", "chatbot", "budget", "openai", "anthropic"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Typing :: Typed",
+]
+dependencies = [
+    "openai>=1.0.0",
+    "pydantic>=2.0.0",
+    "pypdf>=4.0.0",
+    "python-dotenv>=1.0.0",
+    "httpx>=0.25.0",
+    "logfire>=4.19.0",
+    "tiktoken>=0.5.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/teilomillet/enzu"
+Repository = "https://github.com/teilomillet/enzu"
+Documentation = "https://github.com/teilomillet/enzu#readme"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-xdist>=3.6.0",
+    "ruff>=0.4.0",
+    "ty>=0.0.14",
+]
+telemetry = ["logfire"]
+server = [
+    "fastapi>=0.111.0",
+    "uvicorn[standard]>=0.30.0",
+]
+all = [
+    "enzu[dev]",
+    "enzu[telemetry]",
+    "enzu[server]",
+]
+
+[project.scripts]
+enzu = "enzu.cli:main"
+enzu-doctor = "enzu.doctor:main"
+enzu-bench = "enzu.bench:main"
+
+[tool.setuptools.packages.find]
+include = ["enzu", "enzu.*", "scripts"]
+
+[tool.setuptools.package-data]
+"enzu.spec" = ["*.json"]
+
+[tool.pytest.ini_options]
+markers = [
+    "integration: marks tests as integration tests requiring live API access (deselect with '-m \"not integration\"')",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]
+
+[dependency-groups]
+dev = [
+    "pytest-timeout>=2.4.0",
+    "pytest-xdist>=3.6.0",
+    "ty>=0.0.14",
+]

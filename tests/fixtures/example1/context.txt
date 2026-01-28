@@ -1,0 +1,22 @@
+### doc_1
+Title: Synthetic Biography
+This is a synthetic document for tests.
+Albert Einstein received the Nobel Prize in Physics in 1921.
+He later advised a US president during the Cuban Missile Crisis,
+which involved the island nation of Cuba.
+
+### doc_2
+Title: Synthetic Crisis Timeline
+This is a synthetic document for tests.
+The Cuban Missile Crisis was a standoff in 1962.
+It involved the United States and the island nation of Cuba.
+
+### doc_3
+Title: Synthetic Award List
+This is a synthetic document for tests.
+The Nobel Prize in Physics has been awarded since 1901.
+
+### doc_4
+Title: Synthetic Unrelated Note
+This is a synthetic document for tests.
+This document is unrelated to the question.

@@ -1,0 +1,1202 @@
+{
+  "meta": {
+    "defaults": {
+      "budget.max_tokens": 256,
+      "success_criteria.min_word_count": 1
+    },
+    "mode_requirements": {
+      "automode": {
+        "cli_only": true,
+        "context_required": false,
+        "fs_root_required": true
+      },
+      "chat": {
+        "context_required": false
+      },
+      "rlm": {
+        "context_required": true
+      }
+    }
+  },
+  "report": {
+    "execution_report": {
+      "$defs": {
+        "BudgetUsage": {
+          "additionalProperties": false,
+          "properties": {
+            "cost_usd": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cost Usd"
+            },
+            "elapsed_seconds": {
+              "title": "Elapsed Seconds",
+              "type": "number"
+            },
+            "limits_exceeded": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Limits Exceeded",
+              "type": "array"
+            },
+            "output_tokens": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Output Tokens"
+            },
+            "total_tokens": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Total Tokens"
+            },
+            "input_tokens": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Input Tokens"
+            }
+          },
+          "required": [
+            "elapsed_seconds",
+            "output_tokens",
+            "total_tokens",
+            "cost_usd"
+          ],
+          "title": "BudgetUsage",
+          "type": "object"
+        },
+        "ProgressEvent": {
+          "additionalProperties": false,
+          "properties": {
+            "data": {
+              "additionalProperties": true,
+              "title": "Data",
+              "type": "object"
+            },
+            "is_partial": {
+              "default": false,
+              "title": "Is Partial",
+              "type": "boolean"
+            },
+            "message": {
+              "title": "Message",
+              "type": "string"
+            },
+            "phase": {
+              "enum": [
+                "start",
+                "generation",
+                "verification",
+                "complete",
+                "error"
+              ],
+              "title": "Phase",
+              "type": "string"
+            },
+            "timestamp": {
+              "format": "date-time",
+              "title": "Timestamp",
+              "type": "string"
+            }
+          },
+          "required": [
+            "phase",
+            "message"
+          ],
+          "title": "ProgressEvent",
+          "type": "object"
+        },
+        "TrajectoryStep": {
+          "additionalProperties": false,
+          "properties": {
+            "error": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Error"
+            },
+            "finished_at": {
+              "format": "date-time",
+              "title": "Finished At",
+              "type": "string"
+            },
+            "model": {
+              "title": "Model",
+              "type": "string"
+            },
+            "provider": {
+              "title": "Provider",
+              "type": "string"
+            },
+            "request": {
+              "title": "Request",
+              "type": "string"
+            },
+            "response": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Response"
+            },
+            "started_at": {
+              "format": "date-time",
+              "title": "Started At",
+              "type": "string"
+            },
+            "step_index": {
+              "title": "Step Index",
+              "type": "integer"
+            },
+            "usage": {
+              "additionalProperties": true,
+              "title": "Usage",
+              "type": "object"
+            }
+          },
+          "required": [
+            "step_index",
+            "provider",
+            "model",
+            "request",
+            "response",
+            "error",
+            "started_at",
+            "finished_at"
+          ],
+          "title": "TrajectoryStep",
+          "type": "object"
+        },
+        "VerificationResult": {
+          "additionalProperties": false,
+          "properties": {
+            "checked_at": {
+              "format": "date-time",
+              "title": "Checked At",
+              "type": "string"
+            },
+            "passed": {
+              "title": "Passed",
+              "type": "boolean"
+            },
+            "reasons": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Reasons",
+              "type": "array"
+            }
+          },
+          "required": [
+            "passed"
+          ],
+          "title": "VerificationResult",
+          "type": "object"
+        }
+      },
+      "additionalProperties": false,
+      "properties": {
+        "budget_usage": {
+          "$ref": "#/$defs/BudgetUsage"
+        },
+        "errors": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Errors",
+          "type": "array"
+        },
+        "model": {
+          "title": "Model",
+          "type": "string"
+        },
+        "output_text": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Output Text"
+        },
+        "progress_events": {
+          "items": {
+            "$ref": "#/$defs/ProgressEvent"
+          },
+          "title": "Progress Events",
+          "type": "array"
+        },
+        "provider": {
+          "title": "Provider",
+          "type": "string"
+        },
+        "success": {
+          "title": "Success",
+          "type": "boolean"
+        },
+        "task_id": {
+          "title": "Task Id",
+          "type": "string"
+        },
+        "trajectory": {
+          "items": {
+            "$ref": "#/$defs/TrajectoryStep"
+          },
+          "title": "Trajectory",
+          "type": "array"
+        },
+        "verification": {
+          "$ref": "#/$defs/VerificationResult"
+        }
+      },
+      "required": [
+        "success",
+        "task_id",
+        "provider",
+        "model",
+        "output_text",
+        "verification",
+        "budget_usage"
+      ],
+      "title": "ExecutionReport",
+      "type": "object"
+    },
+    "rlm_execution_report": {
+      "$defs": {
+        "BudgetUsage": {
+          "additionalProperties": false,
+          "properties": {
+            "cost_usd": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cost Usd"
+            },
+            "elapsed_seconds": {
+              "title": "Elapsed Seconds",
+              "type": "number"
+            },
+            "limits_exceeded": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Limits Exceeded",
+              "type": "array"
+            },
+            "output_tokens": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Output Tokens"
+            },
+            "total_tokens": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Total Tokens"
+            },
+            "input_tokens": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Input Tokens"
+            }
+          },
+          "required": [
+            "elapsed_seconds",
+            "output_tokens",
+            "total_tokens",
+            "cost_usd"
+          ],
+          "title": "BudgetUsage",
+          "type": "object"
+        },
+        "RLMStep": {
+          "additionalProperties": false,
+          "properties": {
+            "code": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Code"
+            },
+            "error": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Error"
+            },
+            "model_output": {
+              "title": "Model Output",
+              "type": "string"
+            },
+            "prompt": {
+              "title": "Prompt",
+              "type": "string"
+            },
+            "stdout": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Stdout"
+            },
+            "step_index": {
+              "title": "Step Index",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "step_index",
+            "prompt",
+            "model_output",
+            "code",
+            "stdout",
+            "error"
+          ],
+          "title": "RLMStep",
+          "type": "object"
+        }
+      },
+      "additionalProperties": false,
+      "properties": {
+        "answer": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Answer"
+        },
+        "budget_usage": {
+          "$ref": "#/$defs/BudgetUsage"
+        },
+        "errors": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Errors",
+          "type": "array"
+        },
+        "model": {
+          "title": "Model",
+          "type": "string"
+        },
+        "provider": {
+          "title": "Provider",
+          "type": "string"
+        },
+        "steps": {
+          "items": {
+            "$ref": "#/$defs/RLMStep"
+          },
+          "title": "Steps",
+          "type": "array"
+        },
+        "success": {
+          "title": "Success",
+          "type": "boolean"
+        },
+        "task_id": {
+          "title": "Task Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "success",
+        "task_id",
+        "provider",
+        "model",
+        "answer",
+        "budget_usage"
+      ],
+      "title": "RLMExecutionReport",
+      "type": "object"
+    }
+  },
+  "run_payload": {
+    "$defs": {
+      "Budget": {
+        "additionalProperties": false,
+        "properties": {
+          "fallback_providers": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Fallback Providers"
+          },
+          "max_cost_usd": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Max Cost Usd"
+          },
+          "max_output_tokens": {
+            "anyOf": [
+              {
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Max Output Tokens"
+          },
+          "max_seconds": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Max Seconds"
+          },
+          "max_total_tokens": {
+            "anyOf": [
+              {
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Max Total Tokens"
+          }
+        },
+        "title": "Budget",
+        "type": "object"
+      },
+      "SuccessCriteria": {
+        "additionalProperties": false,
+        "description": "Defines when a task is considered complete.\n\nTwo modes:\n1. Mechanical checks: required_substrings, required_regex, min_word_count\n   - Predefined, deterministic verification\n2. Goal-based: goal field\n   - Model self-judges whether goal is achieved\n   - Used when user provides intent rather than explicit checks\n\nAt least one of these must be specified.",
+        "properties": {
+          "case_insensitive": {
+            "default": false,
+            "title": "Case Insensitive",
+            "type": "boolean"
+          },
+          "goal": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Goal"
+          },
+          "min_word_count": {
+            "anyOf": [
+              {
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Min Word Count"
+          },
+          "required_regex": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Required Regex",
+            "type": "array"
+          },
+          "required_substrings": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Required Substrings",
+            "type": "array"
+          }
+        },
+        "title": "SuccessCriteria",
+        "type": "object"
+      },
+      "TaskSpecInput": {
+        "additionalProperties": false,
+        "properties": {
+          "budget": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/Budget"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional budget. Defaults inject max_output_tokens."
+          },
+          "input_text": {
+            "description": "Task prompt text.",
+            "title": "Input Text",
+            "type": "string"
+          },
+          "max_output_tokens": {
+            "anyOf": [
+              {
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Fallback for budget.max_tokens when budget is missing.",
+            "title": "Max Output Tokens"
+          },
+          "metadata": {
+            "additionalProperties": true,
+            "description": "Free-form metadata passed to the engine.",
+            "title": "Metadata",
+            "type": "object"
+          },
+          "model": {
+            "description": "Provider model identifier.",
+            "title": "Model",
+            "type": "string"
+          },
+          "success_criteria": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/SuccessCriteria"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional verification checks. Defaults inject min_word_count."
+          },
+          "task_id": {
+            "description": "Client-generated task id.",
+            "title": "Task Id",
+            "type": "string"
+          },
+          "temperature": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Sampling temperature override.",
+            "title": "Temperature"
+          }
+        },
+        "required": [
+          "task_id",
+          "input_text",
+          "model"
+        ],
+        "title": "TaskSpecInput",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "properties": {
+      "context": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "RLM context string (alias: data).",
+        "title": "Context"
+      },
+      "context_file": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "CLI-only path to load context for RLM mode.",
+        "title": "Context File"
+      },
+      "data": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Alias for context.",
+        "title": "Data"
+      },
+      "fs_root": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "CLI-only root path for automode.",
+        "title": "Fs Root"
+      },
+      "mode": {
+        "default": "chat",
+        "description": "chat|rlm|automode. RLM requires context/data.",
+        "enum": [
+          "chat",
+          "rlm",
+          "automode"
+        ],
+        "title": "Mode",
+        "type": "string"
+      },
+      "model": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional override for task.model.",
+        "title": "Model"
+      },
+      "provider": {
+        "description": "Provider name from the registry.",
+        "title": "Provider",
+        "type": "string"
+      },
+      "task": {
+        "$ref": "#/$defs/TaskSpecInput",
+        "description": "Task payload."
+      }
+    },
+    "required": [
+      "provider",
+      "task"
+    ],
+    "title": "RunPayload",
+    "type": "object"
+  },
+  "task_input": {
+    "$defs": {
+      "Budget": {
+        "additionalProperties": false,
+        "properties": {
+          "fallback_providers": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Fallback Providers"
+          },
+          "max_cost_usd": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Max Cost Usd"
+          },
+          "max_output_tokens": {
+            "anyOf": [
+              {
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Max Output Tokens"
+          },
+          "max_seconds": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Max Seconds"
+          },
+          "max_total_tokens": {
+            "anyOf": [
+              {
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Max Total Tokens"
+          }
+        },
+        "title": "Budget",
+        "type": "object"
+      },
+      "SuccessCriteria": {
+        "additionalProperties": false,
+        "description": "Defines when a task is considered complete.\n\nTwo modes:\n1. Mechanical checks: required_substrings, required_regex, min_word_count\n   - Predefined, deterministic verification\n2. Goal-based: goal field\n   - Model self-judges whether goal is achieved\n   - Used when user provides intent rather than explicit checks\n\nAt least one of these must be specified.",
+        "properties": {
+          "case_insensitive": {
+            "default": false,
+            "title": "Case Insensitive",
+            "type": "boolean"
+          },
+          "goal": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Goal"
+          },
+          "min_word_count": {
+            "anyOf": [
+              {
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Min Word Count"
+          },
+          "required_regex": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Required Regex",
+            "type": "array"
+          },
+          "required_substrings": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Required Substrings",
+            "type": "array"
+          }
+        },
+        "title": "SuccessCriteria",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "properties": {
+      "budget": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/Budget"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional budget. Defaults inject max_output_tokens."
+      },
+      "input_text": {
+        "description": "Task prompt text.",
+        "title": "Input Text",
+        "type": "string"
+      },
+      "max_output_tokens": {
+        "anyOf": [
+          {
+            "minimum": 1,
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Fallback for budget.max_tokens when budget is missing.",
+        "title": "Max Output Tokens"
+      },
+      "metadata": {
+        "additionalProperties": true,
+        "description": "Free-form metadata passed to the engine.",
+        "title": "Metadata",
+        "type": "object"
+      },
+      "model": {
+        "description": "Provider model identifier.",
+        "title": "Model",
+        "type": "string"
+      },
+      "success_criteria": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/SuccessCriteria"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Optional verification checks. Defaults inject min_word_count."
+      },
+      "task_id": {
+        "description": "Client-generated task id.",
+        "title": "Task Id",
+        "type": "string"
+      },
+      "temperature": {
+        "anyOf": [
+          {
+            "minimum": 0.0,
+            "type": "number"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Sampling temperature override.",
+        "title": "Temperature"
+      }
+    },
+    "required": [
+      "task_id",
+      "input_text",
+      "model"
+    ],
+    "title": "TaskSpecInput",
+    "type": "object"
+  },
+  "task_spec": {
+    "$defs": {
+      "Budget": {
+        "additionalProperties": false,
+        "properties": {
+          "fallback_providers": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Fallback Providers"
+          },
+          "max_cost_usd": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Max Cost Usd"
+          },
+          "max_output_tokens": {
+            "anyOf": [
+              {
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Max Output Tokens"
+          },
+          "max_seconds": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Max Seconds"
+          },
+          "max_total_tokens": {
+            "anyOf": [
+              {
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Max Total Tokens"
+          }
+        },
+        "title": "Budget",
+        "type": "object"
+      },
+      "SuccessCriteria": {
+        "additionalProperties": false,
+        "description": "Defines when a task is considered complete.\n\nTwo modes:\n1. Mechanical checks: required_substrings, required_regex, min_word_count\n   - Predefined, deterministic verification\n2. Goal-based: goal field\n   - Model self-judges whether goal is achieved\n   - Used when user provides intent rather than explicit checks\n\nAt least one of these must be specified.",
+        "properties": {
+          "case_insensitive": {
+            "default": false,
+            "title": "Case Insensitive",
+            "type": "boolean"
+          },
+          "goal": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Goal"
+          },
+          "min_word_count": {
+            "anyOf": [
+              {
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Min Word Count"
+          },
+          "required_regex": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Required Regex",
+            "type": "array"
+          },
+          "required_substrings": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Required Substrings",
+            "type": "array"
+          }
+        },
+        "title": "SuccessCriteria",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "properties": {
+      "budget": {
+        "$ref": "#/$defs/Budget"
+      },
+      "input_text": {
+        "title": "Input Text",
+        "type": "string"
+      },
+      "max_output_tokens": {
+        "anyOf": [
+          {
+            "minimum": 1,
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Max Output Tokens"
+      },
+      "metadata": {
+        "additionalProperties": true,
+        "title": "Metadata",
+        "type": "object"
+      },
+      "model": {
+        "title": "Model",
+        "type": "string"
+      },
+      "success_criteria": {
+        "$ref": "#/$defs/SuccessCriteria"
+      },
+      "task_id": {
+        "title": "Task Id",
+        "type": "string"
+      },
+      "temperature": {
+        "anyOf": [
+          {
+            "minimum": 0.0,
+            "type": "number"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Temperature"
+      }
+    },
+    "required": [
+      "task_id",
+      "input_text",
+      "model",
+      "budget",
+      "success_criteria"
+    ],
+    "title": "TaskSpec",
+    "type": "object"
+  }
+}

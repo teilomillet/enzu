@@ -1,0 +1,17 @@
+FILE: app/alpha.py
+def alpha(x):
+    return x + 1
+
+
+FILE: app/beta.py
+def beta(x, items):
+    total = 0
+    if x > 0:
+        total += x
+    for item in items:
+        if item % 2 == 0:
+            total += item
+    while total < 10:
+        total += 1
+    return total
+
