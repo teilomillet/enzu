@@ -88,6 +88,11 @@ JSON
 - `examples/python_quickstart.py` - Minimal Python usage
 - `examples/python_budget_guardrails.py` - Hard budget limits
 - `examples/http_quickstart.sh` - HTTP API run
+- `examples/chat_with_budget.py` - TaskSpec + budgets + success criteria
+- `examples/rlm_with_context.py` - RLM run over longer context
+- `examples/research_with_exa.py` - Research tool + synthesis
+- `examples/file_chatbot.py` - File-based chat loop
+- `examples/file_researcher.py` - Session-based research loop
 
 ## Contributing
 

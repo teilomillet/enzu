@@ -10,6 +10,16 @@
 
 - `QUICKREF.md` - Providers, env vars, model formats
 
+## Examples
+
+- `../examples/python_quickstart.py`
+- `../examples/python_budget_guardrails.py`
+- `../examples/chat_with_budget.py`
+- `../examples/rlm_with_context.py`
+- `../examples/research_with_exa.py`
+- `../examples/file_chatbot.py`
+- `../examples/file_researcher.py`
+
 ## Guides
 
 - `COOKBOOK.md` - Practical patterns and recipes
