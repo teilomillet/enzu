@@ -1,8 +1,21 @@
 ![enzu](github-32.jpeg)
 
+# enzu
+
 Budgeted LLM tasks that scale beyond context.
 
+![PyPI](https://img.shields.io/pypi/v/enzu)
+![Python](https://img.shields.io/pypi/pyversions/enzu)
+![License](https://img.shields.io/github/license/teilomillet/enzu)
+
 enzu is a Python-first toolkit for AI engineers and builders who need reliable, budgeted LLM runs. It enforces hard limits (tokens, time, cost), switches to RLM when context is large, and works across OpenAI-compatible providers. Use it from Python, the CLI, or the HTTP API.
+
+## Why enzu
+
+- **Hard budgets by default**: tokens, time, and cost caps that actually stop work
+- **RLM mode for long context**: recursive subcalls when prompts are too large
+- **Provider-agnostic**: OpenAI-compatible APIs and bring-your-own model
+- **Production-ready surfaces**: Python SDK, CLI worker, and HTTP API
 
 ## Quickstart (Python)
 
@@ -69,6 +82,12 @@ JSON
 - `docs/SERVER.md` - HTTP API
 - `docs/PYTHON_API_REFERENCE.md` - Full Python API
 - `docs/COOKBOOK.md` - Patterns and recipes
+
+## Examples
+
+- `examples/python_quickstart.py` - Minimal Python usage
+- `examples/python_budget_guardrails.py` - Hard budget limits
+- `examples/http_quickstart.sh` - HTTP API run
 
 ## Contributing
 

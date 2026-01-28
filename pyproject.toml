@@ -5,14 +5,25 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "enzu"
 version = "0.2.0"
-description = "AI delegation orchestration. Tasks as budgeted jobs, not conversations."
+description = "Budgeted LLM task orchestration with hard limits and long-context RLM."
 readme = "README.md"
 license = {text = "Apache-2.0"}
 requires-python = ">=3.9"
 authors = [
     {name = "teilomillet"}
 ]
-keywords = ["llm", "ai", "orchestration", "chatbot", "budget", "openai", "anthropic"]
+keywords = [
+    "llm",
+    "ai",
+    "orchestration",
+    "budget",
+    "rlm",
+    "agents",
+    "workflow",
+    "openai",
+    "anthropic",
+    "openrouter",
+]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
@@ -39,7 +50,9 @@ dependencies = [
 [project.urls]
 Homepage = "https://github.com/teilomillet/enzu"
 Repository = "https://github.com/teilomillet/enzu"
-Documentation = "https://github.com/teilomillet/enzu#readme"
+Documentation = "https://github.com/teilomillet/enzu/tree/main/docs"
+Issues = "https://github.com/teilomillet/enzu/issues"
+Changelog = "https://github.com/teilomillet/enzu/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
 dev = [
