@@ -21,7 +21,7 @@ jobs:
         run: uv python install 3.11
 
       - name: Install dependencies
-        run: uv sync --dev
+        run: uv sync --extra dev
 
       - name: Syntax check examples
         run: uv run python -m py_compile examples/*.py
@@ -46,12 +46,14 @@ jobs:
         run: uv python install 3.11
 
       - name: Install dependencies
-        run: uv sync --dev
+        run: uv sync --extra dev --extra server
 
       - name: Run tests (fast, no containers)
         run: |
           uv run pytest -n auto \
-            -k "not container_pool_integration and not rlm_podman_security and not rlm_container_isolation" \
+            --ignore=tests/test_container_pool_integration.py \
+            --ignore=tests/test_rlm_podman_security.py \
+            --ignore=tests/test_rlm_container_isolation.py \
             -m "not integration" \
             --tb=short -q
 
@@ -70,7 +72,7 @@ jobs:
         run: uv python install 3.11
 
       - name: Install dependencies
-        run: uv sync --dev
+        run: uv sync --extra dev
 
       - name: Run integration example
         if: env.OPENROUTER_API_KEY != ''
