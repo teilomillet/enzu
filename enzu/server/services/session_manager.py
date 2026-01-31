@@ -4,6 +4,7 @@ Session storage and management for HTTP context.
 Provides isolated session storage with TTL support.
 MVP implementation uses in-memory storage; Redis can be added later.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -77,8 +78,7 @@ class InMemorySessionStore:
         """Remove expired sessions."""
         async with self._lock:
             expired = [
-                sid for sid, stored in self._sessions.items()
-                if stored.is_expired
+                sid for sid, stored in self._sessions.items() if stored.is_expired
             ]
             for sid in expired:
                 del self._sessions[sid]

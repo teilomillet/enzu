@@ -21,6 +21,7 @@ Usage:
         ...
     )
 """
+
 from __future__ import annotations
 
 import os
@@ -44,6 +45,7 @@ class SecurityProfile:
         output_char_limit: Maximum output characters
         description: Human-readable description
     """
+
     name: str
     allowed_imports: FrozenSet[str]
     enable_pip: bool = False
@@ -69,36 +71,42 @@ class SecurityProfile:
 
 
 # Core safe imports - minimal set for computation
-_CORE_IMPORTS: FrozenSet[str] = frozenset([
-    "collections",
-    "datetime",
-    "functools",
-    "itertools",
-    "json",
-    "math",
-    "random",
-    "re",
-    "statistics",
-    "string",
-    "textwrap",
-    "typing",
-])
+_CORE_IMPORTS: FrozenSet[str] = frozenset(
+    [
+        "collections",
+        "datetime",
+        "functools",
+        "itertools",
+        "json",
+        "math",
+        "random",
+        "re",
+        "statistics",
+        "string",
+        "textwrap",
+        "typing",
+    ]
+)
 
 # Extended imports for data processing
-_DATA_IMPORTS: FrozenSet[str] = frozenset([
-    "csv",
-    "decimal",
-    "hashlib",
-    "heapq",
-    "operator",
-    "uuid",
-])
+_DATA_IMPORTS: FrozenSet[str] = frozenset(
+    [
+        "csv",
+        "decimal",
+        "hashlib",
+        "heapq",
+        "operator",
+        "uuid",
+    ]
+)
 
 # Network-related imports (only for dev mode)
-_NETWORK_IMPORTS: FrozenSet[str] = frozenset([
-    "http",
-    "urllib",
-])
+_NETWORK_IMPORTS: FrozenSet[str] = frozenset(
+    [
+        "http",
+        "urllib",
+    ]
+)
 
 
 # Predefined profiles

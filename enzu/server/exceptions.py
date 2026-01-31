@@ -1,6 +1,7 @@
 """
 HTTP exception types for the API server.
 """
+
 from typing import Optional
 
 

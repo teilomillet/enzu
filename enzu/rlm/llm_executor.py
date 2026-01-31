@@ -9,6 +9,7 @@ Extracted from engine.py. Encapsulates LLM call logic with:
 
 Thread-safe for concurrent llm_batch execution.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -62,7 +63,7 @@ class LLMExecutorConfig:
 class LLMExecutor:
     """
     Executes LLM queries with budget management and provider fallback.
-    
+
     Extracted from RLMEngine.run() to enable testing and reuse.
     """
 
@@ -84,7 +85,9 @@ class LLMExecutor:
 
         # Subcall support (set by RLMEngine when recursive mode enabled)
         # Signature: (prompt, max_output_tokens, max_total_tokens) -> RLMExecutionReport
-        self._subcall_runner: Optional[Callable[[str, Optional[int], Optional[int]], RLMExecutionReport]] = None
+        self._subcall_runner: Optional[
+            Callable[[str, Optional[int], Optional[int]], RLMExecutionReport]
+        ] = None
 
     def set_subcall_runner(
         self,
@@ -95,12 +98,12 @@ class LLMExecutor:
 
     def _requested_output_tokens(self) -> int:
         """Calculate max output tokens for current request.
-        
+
         Uses adaptive scaling based on budget consumption:
         - At 90%+ usage: caps at 256 tokens (enough for FINAL call)
         - At 80%+ usage: reduces to 50% of base
         - At 50%+ usage: reduces to 75% of base
-        
+
         This prevents truncation by reducing output size as budget depletes.
         """
         base_output_tokens = (
@@ -109,8 +112,10 @@ class LLMExecutor:
             or DEFAULT_MAX_OUTPUT_TOKENS
         )
         if self._task.budget.max_total_tokens is not None:
-            base_output_tokens = min(base_output_tokens, self._task.budget.max_total_tokens)
-        
+            base_output_tokens = min(
+                base_output_tokens, self._task.budget.max_total_tokens
+            )
+
         # Apply adaptive scaling based on budget usage
         remaining_output = self._budget_tracker.remaining_output_tokens()
         remaining_total = self._token_pool.snapshot().get("remaining_tokens")
@@ -133,7 +138,9 @@ class LLMExecutor:
         if threshold <= 100:
             return max_pct is not None and max_pct >= threshold
         candidates = [
-            value for value in (remaining_total, remaining_output) if isinstance(value, int)
+            value
+            for value in (remaining_total, remaining_output)
+            if isinstance(value, int)
         ]
         if candidates:
             return min(candidates) <= threshold
@@ -150,7 +157,11 @@ class LLMExecutor:
             remaining_parts.append(f"remaining_total_tokens={remaining_total}")
         if remaining_output is not None:
             remaining_parts.append(f"remaining_output_tokens={remaining_output}")
-        remaining_text = ", ".join(remaining_parts) if remaining_parts else "remaining tokens unknown"
+        remaining_text = (
+            ", ".join(remaining_parts)
+            if remaining_parts
+            else "remaining tokens unknown"
+        )
         threshold = self._critical_threshold
         if threshold <= 100:
             threshold_text = f"critical threshold={threshold}%"
@@ -169,18 +180,22 @@ class LLMExecutor:
     ) -> tuple[int, int]:
         """
         Reserve tokens before LLM call.
-        
+
         Returns (output_cap, reserved).
         Raises RuntimeError if budget exhausted or prompt too large.
         """
         prompt_tokens = count_tokens_exact(prompt, self._task.model)
-        
+
         # If exact count unavailable and we have a total token budget,
         # use conservative estimate to prevent overspend for non-mock models
         # (Mock models are for testing and return controlled usage)
         model_lower = (self._task.model or "").lower()
         is_mock = "mock" in model_lower or "test" in model_lower
-        if prompt_tokens is None and self._task.budget.max_total_tokens is not None and not is_mock:
+        if (
+            prompt_tokens is None
+            and self._task.budget.max_total_tokens is not None
+            and not is_mock
+        ):
             prompt_tokens = estimate_tokens_conservative(prompt)
             telemetry.log(
                 "info",
@@ -188,7 +203,7 @@ class LLMExecutor:
                 estimated_tokens=prompt_tokens,
                 prompt_len=len(prompt),
             )
-        
+
         # HARD ENFORCEMENT: If the prompt alone exceeds remaining budget, fail immediately
         if prompt_tokens is not None and self._task.budget.max_total_tokens is not None:
             pool_snapshot = self._token_pool.snapshot()
@@ -204,8 +219,10 @@ class LLMExecutor:
                     f"budget_exhausted_preflight: prompt requires ~{prompt_tokens} tokens "
                     f"but only {remaining} tokens remaining"
                 )
-        
-        output_cap, reserved = self._token_pool.reserve(prompt_tokens, requested_output_tokens)
+
+        output_cap, reserved = self._token_pool.reserve(
+            prompt_tokens, requested_output_tokens
+        )
         if output_cap <= 0:
             raise RuntimeError("budget_exhausted_preflight")
         if output_cap < requested_output_tokens:
@@ -230,7 +247,7 @@ class LLMExecutor:
     def direct_query(self, prompt: str, *, span_name: str = "rlm.llm_query") -> str:
         """
         Execute direct LLM query with provider fallback.
-        
+
         Used by RLMEngine for step queries and as fallback for sandbox_llm_query.
         """
         if self._budget_tracker.is_exhausted():
@@ -242,13 +259,19 @@ class LLMExecutor:
         last_exception = None
         for current_provider in all_providers:
             try:
-                with telemetry.span(span_name, prompt_len=len(prompt), provider=current_provider.name):
+                with telemetry.span(
+                    span_name, prompt_len=len(prompt), provider=current_provider.name
+                ):
                     result = current_provider.stream(
-                        self._task.model_copy(update={
-                            "input_text": prompt,
-                            "max_output_tokens": output_cap,
-                        }),
-                        on_progress=lambda event: self._emit(f"llm_stream:{event.message}"),
+                        self._task.model_copy(
+                            update={
+                                "input_text": prompt,
+                                "max_output_tokens": output_cap,
+                            }
+                        ),
+                        on_progress=lambda event: self._emit(
+                            f"llm_stream:{event.message}"
+                        ),
                     )
                 with self._lock:
                     normalized_usage = accumulate_usage(
@@ -259,10 +282,15 @@ class LLMExecutor:
                         model=self._task.model,
                     )
                     self._budget_tracker.consume(normalized_usage)
-                    if self._task.budget.max_total_tokens is not None and normalized_usage.get("total_tokens") is None:
+                    if (
+                        self._task.budget.max_total_tokens is not None
+                        and normalized_usage.get("total_tokens") is None
+                    ):
                         self._emit("usage_missing_total_tokens")
-                    self._token_pool.commit(reserved, normalized_usage.get("total_tokens"))
-                    
+                    self._token_pool.commit(
+                        reserved, normalized_usage.get("total_tokens")
+                    )
+
                     # Track if budget exhausted after this call
                     budget_exhausted_after = self._budget_tracker.is_exhausted()
                     if budget_exhausted_after:
@@ -272,7 +300,7 @@ class LLMExecutor:
                             reserved=reserved,
                             actual_total=normalized_usage.get("total_tokens"),
                         )
-                        
+
                 telemetry.log(
                     "info",
                     "llm_query_done",
@@ -302,9 +330,9 @@ class LLMExecutor:
     def sandbox_query(self, prompt: str) -> str:
         """
         LLM query for sandbox use. Supports recursive subcalls if configured.
-        
+
         Falls back to direct_query if subcall runner not set.
-        
+
         For recursive subcalls, reserves the ENTIRE remaining budget for this subcall
         to ensure hard enforcement - the subcall cannot exceed what was reserved.
         """
@@ -317,7 +345,7 @@ class LLMExecutor:
             # This ensures hard enforcement: subcall cannot exceed reserved amount
             pool_snapshot = self._token_pool.snapshot()
             remaining = pool_snapshot.get("remaining_tokens")
-            
+
             if remaining is None:
                 # No token limit set - use unlimited
                 max_total_tokens = None
@@ -331,29 +359,37 @@ class LLMExecutor:
                 if reserved_total <= 0:
                     raise RuntimeError("budget_exhausted_preflight")
                 max_total_tokens = reserved_total
-            
+
             # Calculate adaptive output cap based on reserved budget
             requested_output_tokens = self._requested_output_tokens()
-            output_cap = min(requested_output_tokens, max_total_tokens or requested_output_tokens)
-            
+            output_cap = min(
+                requested_output_tokens, max_total_tokens or requested_output_tokens
+            )
+
             try:
                 with telemetry.span("rlm.llm_query_recursive", prompt_len=len(prompt)):
-                    sub_report = self._subcall_runner(prompt, output_cap, max_total_tokens)
+                    sub_report = self._subcall_runner(
+                        prompt, output_cap, max_total_tokens
+                    )
             except Exception:
                 if reserved_total > 0:
                     self._token_pool.release(reserved_total)
                 raise
-            
+
             sub_usage = {
                 "input_tokens": sub_report.budget_usage.input_tokens,
                 "output_tokens": sub_report.budget_usage.output_tokens,
                 "total_tokens": sub_report.budget_usage.total_tokens,
                 "cost_usd": sub_report.budget_usage.cost_usd,
             }
-            
+
             # Verify subcall didn't exceed its reserved budget (belt and suspenders)
             actual_total = sub_usage.get("total_tokens")
-            if actual_total is not None and reserved_total > 0 and actual_total > reserved_total:
+            if (
+                actual_total is not None
+                and reserved_total > 0
+                and actual_total > reserved_total
+            ):
                 telemetry.log(
                     "warning",
                     "budget_violation_subcall_overuse",
@@ -362,15 +398,20 @@ class LLMExecutor:
                 )
                 # Clamp to reserved to maintain accounting integrity
                 sub_usage["total_tokens"] = reserved_total
-            
+
             with self._lock:
                 normalized_usage = accumulate_usage(self._usage_accumulator, sub_usage)
                 self._budget_tracker.consume(normalized_usage)
-                if self._task.budget.max_total_tokens is not None and normalized_usage.get("total_tokens") is None:
+                if (
+                    self._task.budget.max_total_tokens is not None
+                    and normalized_usage.get("total_tokens") is None
+                ):
                     self._emit("usage_missing_total_tokens")
                 # Commit using reserved_total (not the old prompt+output reservation)
-                self._token_pool.commit(reserved_total, normalized_usage.get("total_tokens"))
-            
+                self._token_pool.commit(
+                    reserved_total, normalized_usage.get("total_tokens")
+                )
+
             telemetry.log(
                 "info",
                 "llm_query_recursive_done",
@@ -385,7 +426,7 @@ class LLMExecutor:
     def batch_query(self, prompts: List[str]) -> List[str]:
         """
         Execute multiple LLM queries in parallel.
-        
+
         Uses thread pool for concurrent execution with global rate limiting
         via enzu.isolation.concurrency.
         """
@@ -406,14 +447,14 @@ class LLMExecutor:
 
     def _batch_subcalls(self, prompts: List[str], limiter: Any) -> List[str]:
         """Batch execution via recursive subcalls.
-        
+
         Splits remaining budget evenly across all subcalls upfront to ensure
         parallel subcalls cannot oversubscribe the total budget.
         """
         # Pre-calculate budget split BEFORE spawning threads
         pool_snapshot = self._token_pool.snapshot()
         remaining = pool_snapshot.get("remaining_tokens")
-        
+
         if remaining is None:
             # No token limit - each subcall gets unlimited
             per_subcall_budget = None
@@ -429,7 +470,7 @@ class LLMExecutor:
                 num_prompts=len(prompts),
                 per_subcall=per_subcall_budget,
             )
-        
+
         def query_one(prompt: str, index: int) -> Tuple[int, str]:
             with limiter.acquire():
                 if self._budget_tracker.is_exhausted():
@@ -437,7 +478,7 @@ class LLMExecutor:
 
                 if self._subcall_runner is None:
                     raise RuntimeError("Subcall runner not configured")
-                
+
                 # Reserve this subcall's share of the budget
                 if per_subcall_budget is None:
                     reserved_total = 0
@@ -447,11 +488,13 @@ class LLMExecutor:
                     if reserved_total <= 0:
                         raise RuntimeError("budget_exhausted_preflight")
                     max_total_tokens = reserved_total
-                
+
                 # Calculate output cap within the subcall's budget
                 requested_output_tokens = self._requested_output_tokens()
-                output_cap = min(requested_output_tokens, max_total_tokens or requested_output_tokens)
-                
+                output_cap = min(
+                    requested_output_tokens, max_total_tokens or requested_output_tokens
+                )
+
                 with telemetry.span(
                     "rlm.llm_batch.subcall",
                     prompt_len=len(prompt),
@@ -459,22 +502,28 @@ class LLMExecutor:
                     reserved_total=reserved_total,
                 ):
                     try:
-                        sub_report = self._subcall_runner(prompt, output_cap, max_total_tokens)
+                        sub_report = self._subcall_runner(
+                            prompt, output_cap, max_total_tokens
+                        )
                     except Exception:
                         if reserved_total > 0:
                             self._token_pool.release(reserved_total)
                         raise
-                
+
                 sub_usage = {
                     "input_tokens": sub_report.budget_usage.input_tokens,
                     "output_tokens": sub_report.budget_usage.output_tokens,
                     "total_tokens": sub_report.budget_usage.total_tokens,
                     "cost_usd": sub_report.budget_usage.cost_usd,
                 }
-                
+
                 # Verify subcall didn't exceed its reserved budget
                 actual_total = sub_usage.get("total_tokens")
-                if actual_total is not None and reserved_total > 0 and actual_total > reserved_total:
+                if (
+                    actual_total is not None
+                    and reserved_total > 0
+                    and actual_total > reserved_total
+                ):
                     telemetry.log(
                         "warning",
                         "budget_violation_batch_subcall_overuse",
@@ -483,14 +532,21 @@ class LLMExecutor:
                         actual=actual_total,
                     )
                     sub_usage["total_tokens"] = reserved_total
-                
+
                 with self._lock:
-                    normalized_usage = accumulate_usage(self._usage_accumulator, sub_usage)
+                    normalized_usage = accumulate_usage(
+                        self._usage_accumulator, sub_usage
+                    )
                     self._budget_tracker.consume(normalized_usage)
-                    if self._task.budget.max_total_tokens is not None and normalized_usage.get("total_tokens") is None:
+                    if (
+                        self._task.budget.max_total_tokens is not None
+                        and normalized_usage.get("total_tokens") is None
+                    ):
                         self._emit("usage_missing_total_tokens")
-                    self._token_pool.commit(reserved_total, normalized_usage.get("total_tokens"))
-                
+                    self._token_pool.commit(
+                        reserved_total, normalized_usage.get("total_tokens")
+                    )
+
                 telemetry.log(
                     "info",
                     "llm_batch_subcall_done",
@@ -503,17 +559,24 @@ class LLMExecutor:
                 return (index, sub_report.answer or "")
 
         with telemetry.span("rlm.llm_batch", batch_size=len(prompts)):
-            with concurrent.futures.ThreadPoolExecutor(max_workers=self.MAX_BATCH_WORKERS) as executor:
-                futures = [executor.submit(query_one, p, i) for i, p in enumerate(prompts)]
+            with concurrent.futures.ThreadPoolExecutor(
+                max_workers=self.MAX_BATCH_WORKERS
+            ) as executor:
+                futures = [
+                    executor.submit(query_one, p, i) for i, p in enumerate(prompts)
+                ]
                 results = [f.result() for f in futures]
         return [output for _, output in sorted(results)]
 
     def _batch_direct(self, prompts: List[str], limiter: Any) -> List[str]:
         """Batch execution via direct provider calls."""
+
         def query_one(prompt: str, index: int) -> Tuple[int, str]:
             with limiter.acquire():
                 requested_output_tokens = self._requested_output_tokens()
-                output_cap, reserved = self._reserve_budget(prompt, requested_output_tokens)
+                output_cap, reserved = self._reserve_budget(
+                    prompt, requested_output_tokens
+                )
                 all_providers = [self._provider] + self._fallback_providers
                 for current_provider in all_providers:
                     try:
@@ -524,11 +587,15 @@ class LLMExecutor:
                             provider=current_provider.name,
                         ):
                             result = current_provider.stream(
-                                self._task.model_copy(update={
-                                    "input_text": prompt,
-                                    "max_output_tokens": output_cap,
-                                }),
-                                on_progress=lambda event: self._emit(f"llm_stream:batch[{index}]:{event.message}"),
+                                self._task.model_copy(
+                                    update={
+                                        "input_text": prompt,
+                                        "max_output_tokens": output_cap,
+                                    }
+                                ),
+                                on_progress=lambda event: self._emit(
+                                    f"llm_stream:batch[{index}]:{event.message}"
+                                ),
                             )
                         with self._lock:
                             normalized_usage = accumulate_usage(
@@ -539,9 +606,14 @@ class LLMExecutor:
                                 model=self._task.model,
                             )
                             self._budget_tracker.consume(normalized_usage)
-                            if self._task.budget.max_total_tokens is not None and normalized_usage.get("total_tokens") is None:
+                            if (
+                                self._task.budget.max_total_tokens is not None
+                                and normalized_usage.get("total_tokens") is None
+                            ):
                                 self._emit("usage_missing_total_tokens")
-                            self._token_pool.commit(reserved, normalized_usage.get("total_tokens"))
+                            self._token_pool.commit(
+                                reserved, normalized_usage.get("total_tokens")
+                            )
                         telemetry.log(
                             "info",
                             "llm_batch_query_done",
@@ -569,9 +641,14 @@ class LLMExecutor:
         async def run_batch() -> List[str]:
             with telemetry.span("rlm.llm_batch", batch_size=len(prompts)):
                 loop = asyncio.get_event_loop()
-                executor = concurrent.futures.ThreadPoolExecutor(max_workers=self.MAX_BATCH_WORKERS)
+                executor = concurrent.futures.ThreadPoolExecutor(
+                    max_workers=self.MAX_BATCH_WORKERS
+                )
                 try:
-                    futures = [loop.run_in_executor(executor, query_one, p, i) for i, p in enumerate(prompts)]
+                    futures = [
+                        loop.run_in_executor(executor, query_one, p, i)
+                        for i, p in enumerate(prompts)
+                    ]
                     results = await asyncio.gather(*futures)
                     return [output for _, output in sorted(results)]
                 finally:

@@ -1,9 +1,28 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from enum import Enum
 from typing import Any, Dict, List, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+
+class Outcome(str, Enum):
+    """
+    Canonical run outcomes for predictable execution.
+
+    Budgets are enforced as hard stops - when exceeded, the run terminates
+    deterministically and returns an outcome (not just an exception).
+    """
+
+    SUCCESS = "success"
+    BUDGET_EXCEEDED = "budget_exceeded"
+    TIMEOUT = "timeout"
+    CANCELLED = "cancelled"
+    TOOL_ERROR = "tool_error"
+    PROVIDER_ERROR = "provider_error"
+    INVALID_REQUEST = "invalid_request"
+    VERIFICATION_FAILED = "verification_failed"
 
 
 def utc_now() -> datetime:
@@ -27,6 +46,7 @@ class Budget(BaseModel):
         max_cost_usd: Maximum cost in USD. **OpenRouter only**.
         fallback_providers: List of fallback provider names if primary fails.
     """
+
     model_config = ConfigDict(extra="forbid")
 
     max_tokens: Optional[int] = Field(
@@ -70,6 +90,7 @@ class SuccessCriteria(BaseModel):
 
     At least one of these must be specified.
     """
+
     model_config = ConfigDict(extra="forbid")
 
     required_substrings: List[str] = Field(default_factory=list)
@@ -82,7 +103,9 @@ class SuccessCriteria(BaseModel):
 
     @model_validator(mode="after")
     def require_checks(self) -> "SuccessCriteria":
-        has_mechanical = self.required_substrings or self.required_regex or self.min_word_count
+        has_mechanical = (
+            self.required_substrings or self.required_regex or self.min_word_count
+        )
         has_goal = bool(self.goal)
         if not (has_mechanical or has_goal):
             raise ValueError("SuccessCriteria requires at least one check or a goal.")
@@ -207,11 +230,12 @@ class RLMStep(BaseModel):
 class StepFeedback(BaseModel):
     """
     Structured feedback for RLM execution step.
-    
+
     Two layers of feedback:
     1. Error recovery: hints for safe helper usage after crashes
     2. Code pattern guidance: warnings about anti-patterns (over-delegation, etc.)
     """
+
     model_config = ConfigDict(extra="forbid")
 
     # Structural violations (e.g., "multiple_blocks:3")
@@ -238,6 +262,14 @@ class RLMExecutionReport(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     success: bool
+    outcome: Outcome = Field(
+        default=Outcome.SUCCESS,
+        description="Typed outcome for predictable handling",
+    )
+    partial: bool = Field(
+        default=False,
+        description="True if result is incomplete due to budget/timeout",
+    )
     task_id: str
     provider: str
     model: str
@@ -251,6 +283,14 @@ class ExecutionReport(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     success: bool
+    outcome: Outcome = Field(
+        default=Outcome.SUCCESS,
+        description="Typed outcome for predictable handling",
+    )
+    partial: bool = Field(
+        default=False,
+        description="True if result is incomplete due to budget/timeout",
+    )
     task_id: str
     provider: str
     model: str

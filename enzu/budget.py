@@ -10,6 +10,7 @@ Architecture:
 - Hard stop after limit exceeded (no more calls allowed)
 - Audit log for every transaction
 """
+
 from __future__ import annotations
 
 import threading
@@ -20,6 +21,7 @@ from typing import Any, Dict, List, Optional
 # tiktoken for accurate token counting (same tokenizer as OpenAI)
 try:
     import tiktoken
+
     _HAS_TIKTOKEN = True
 except ImportError:
     _HAS_TIKTOKEN = False
@@ -28,6 +30,7 @@ except ImportError:
 @dataclass
 class BudgetEvent:
     """Single budget transaction for audit trail."""
+
     timestamp: str
     event_type: str  # "call", "exceeded", "blocked"
     input_tokens: Optional[int] = None
@@ -63,7 +66,10 @@ class BudgetExceeded(Exception):
         self.limit_type = limit_type
         self.limit_value = limit_value
         self.current_value = current_value
-        msg = message or f"Budget exceeded: {limit_type} limit {limit_value}, current {current_value}"
+        msg = (
+            message
+            or f"Budget exceeded: {limit_type} limit {limit_value}, current {current_value}"
+        )
         super().__init__(msg)
 
 
@@ -203,8 +209,11 @@ class BudgetController:
             if self.max_input_tokens is not None:
                 projected = self._total_input_tokens + input_tokens
                 if projected > self.max_input_tokens:
-                    self._log_event("blocked", input_tokens=input_tokens,
-                                   details={"reason": "input_tokens_exceeded"})
+                    self._log_event(
+                        "blocked",
+                        input_tokens=input_tokens,
+                        details={"reason": "input_tokens_exceeded"},
+                    )
                     raise BudgetExceeded(
                         limit_type="max_input_tokens",
                         limit_value=self.max_input_tokens,
@@ -216,9 +225,14 @@ class BudgetController:
                 output_estimate = max_output_tokens or 0
                 projected_output = self._total_output_tokens + output_estimate
                 if projected_output > self.max_tokens:
-                    self._log_event("blocked", input_tokens=input_tokens,
-                                   details={"reason": "output_tokens_exceeded",
-                                           "projected": projected_output})
+                    self._log_event(
+                        "blocked",
+                        input_tokens=input_tokens,
+                        details={
+                            "reason": "output_tokens_exceeded",
+                            "projected": projected_output,
+                        },
+                    )
                     raise BudgetExceeded(
                         limit_type="max_tokens",
                         limit_value=self.max_tokens,
@@ -230,9 +244,14 @@ class BudgetController:
                 output_estimate = max_output_tokens or 0
                 projected_total = self._total_tokens + input_tokens + output_estimate
                 if projected_total > self.max_total_tokens:
-                    self._log_event("blocked", input_tokens=input_tokens,
-                                   details={"reason": "total_tokens_exceeded",
-                                           "projected": projected_total})
+                    self._log_event(
+                        "blocked",
+                        input_tokens=input_tokens,
+                        details={
+                            "reason": "total_tokens_exceeded",
+                            "projected": projected_total,
+                        },
+                    )
                     raise BudgetExceeded(
                         limit_type="max_total_tokens",
                         limit_value=self.max_total_tokens,
@@ -288,9 +307,15 @@ class BudgetController:
         if self.max_tokens is not None and self._total_output_tokens >= self.max_tokens:
             self._mark_exceeded("max_tokens")
         # max_total_tokens enforces cumulative total (input + output)
-        if self.max_total_tokens is not None and self._total_tokens >= self.max_total_tokens:
+        if (
+            self.max_total_tokens is not None
+            and self._total_tokens >= self.max_total_tokens
+        ):
             self._mark_exceeded("max_total_tokens")
-        if self.max_input_tokens is not None and self._total_input_tokens >= self.max_input_tokens:
+        if (
+            self.max_input_tokens is not None
+            and self._total_input_tokens >= self.max_input_tokens
+        ):
             self._mark_exceeded("max_input_tokens")
 
     def _mark_exceeded(self, reason: str) -> None:
@@ -309,16 +334,18 @@ class BudgetController:
         details: Optional[Dict[str, Any]] = None,
     ) -> None:
         """Add event to audit log."""
-        self._events.append(BudgetEvent(
-            timestamp=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
-            event_type=event_type,
-            input_tokens=input_tokens,
-            output_tokens=output_tokens,
-            cost_usd=cost_usd,
-            cumulative_cost_usd=self._total_cost_usd,
-            cumulative_tokens=self._total_tokens,
-            details=details,
-        ))
+        self._events.append(
+            BudgetEvent(
+                timestamp=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+                event_type=event_type,
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+                cost_usd=cost_usd,
+                cumulative_cost_usd=self._total_cost_usd,
+                cumulative_tokens=self._total_tokens,
+                details=details,
+            )
+        )
 
     def to_dict(self) -> Dict[str, Any]:
         """Serialize controller state for persistence or reporting."""
@@ -373,7 +400,9 @@ def count_tokens(text: str, model: Optional[str] = None) -> int:
         except Exception:
             # Model-specific encoding failed, use default
             if _DEFAULT_ENCODING not in _encoding_cache:
-                _encoding_cache[_DEFAULT_ENCODING] = tiktoken.get_encoding(_DEFAULT_ENCODING)
+                _encoding_cache[_DEFAULT_ENCODING] = tiktoken.get_encoding(
+                    _DEFAULT_ENCODING
+                )
             encoding_name = _DEFAULT_ENCODING
 
     encoding = _encoding_cache[encoding_name]
@@ -386,7 +415,9 @@ def _supports_exact_count(model: Optional[str]) -> bool:
     model_lower = model.lower()
     if model_lower.startswith("openai/") or "/gpt-" in model_lower:
         return True
-    return any(key in model_lower for key in ("gpt-4", "gpt-3.5", "gpt-4o", "o1", "o3", "o4"))
+    return any(
+        key in model_lower for key in ("gpt-4", "gpt-3.5", "gpt-4o", "o1", "o3", "o4")
+    )
 
 
 def count_tokens_exact(text: str, model: Optional[str] = None) -> Optional[int]:
@@ -412,10 +443,10 @@ def count_tokens_exact(text: str, model: Optional[str] = None) -> Optional[int]:
 def estimate_tokens_conservative(text: str) -> int:
     """
     Estimate tokens using a conservative character-based approximation.
-    
+
     Uses ~3 characters per token (conservative - typical is ~4 chars/token).
     This ensures we don't underestimate and exceed budgets.
-    
+
     Use when exact token counting is unavailable.
     """
     if not text:
@@ -444,7 +475,9 @@ def _get_encoding_for_model(model: Optional[str]) -> str:
     return _DEFAULT_ENCODING
 
 
-def count_message_tokens(messages: List[Dict[str, str]], model: Optional[str] = None) -> int:
+def count_message_tokens(
+    messages: List[Dict[str, str]], model: Optional[str] = None
+) -> int:
     """
     Count tokens in a chat message list.
 

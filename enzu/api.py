@@ -153,9 +153,12 @@ def run(
 
     # Validate cost budget: only OpenRouter returns cost_usd in responses.
     # Other providers (OpenAI, Anthropic, etc.) only report tokens.
-    provider_name = provider if isinstance(provider, str) else getattr(provider, "name", "")
+    provider_name = (
+        provider if isinstance(provider, str) else getattr(provider, "name", "")
+    )
     if cost is not None and provider_name != "openrouter":
         import warnings
+
         warnings.warn(
             f"max_cost_usd budget is only enforced with OpenRouter (provider={provider_name!r}). "
             f"Other providers don't report cost in API responses. "
@@ -359,8 +362,10 @@ def _run_internal(
     progress_callback = None
     if on_progress is not None:
         from enzu.models import ProgressEvent
+
         def _wrap_progress(event: ProgressEvent) -> None:
             on_progress(event.message)
+
         progress_callback = _wrap_progress
     chat_engine = Engine()
     return chat_engine.run(
@@ -453,8 +458,6 @@ def _merge_check(
     )
 
 
-
-
 def _apply_task_overrides(
     spec: TaskSpec,
     *,
@@ -487,20 +490,41 @@ def _apply_task_overrides(
         tokens is not None
         or seconds is not None
         or cost is not None
-        or (limits is not None and any([limits.tokens, limits.total, limits.seconds, limits.cost]))
+        or (
+            limits is not None
+            and any([limits.tokens, limits.total, limits.seconds, limits.cost])
+        )
     )
     if has_limit_override:
         base_budget = spec.budget
         budget_max_tokens = (
             tokens
             if tokens is not None
-            else (limits.tokens if limits is not None and limits.tokens is not None else base_budget.max_tokens)
+            else (
+                limits.tokens
+                if limits is not None and limits.tokens is not None
+                else base_budget.max_tokens
+            )
         )
         updates["budget"] = Budget(
             max_tokens=budget_max_tokens,
-            max_total_tokens=limits.total if limits is not None and limits.total is not None else base_budget.max_total_tokens,
-            max_seconds=seconds if seconds is not None else (limits.seconds if limits is not None and limits.seconds is not None else base_budget.max_seconds),
-            max_cost_usd=cost if cost is not None else (limits.cost if limits is not None and limits.cost is not None else base_budget.max_cost_usd),
+            max_total_tokens=limits.total
+            if limits is not None and limits.total is not None
+            else base_budget.max_total_tokens,
+            max_seconds=seconds
+            if seconds is not None
+            else (
+                limits.seconds
+                if limits is not None and limits.seconds is not None
+                else base_budget.max_seconds
+            ),
+            max_cost_usd=cost
+            if cost is not None
+            else (
+                limits.cost
+                if limits is not None and limits.cost is not None
+                else base_budget.max_cost_usd
+            ),
         )
         if budget_max_tokens is not None:
             updates["max_output_tokens"] = budget_max_tokens
@@ -523,7 +547,12 @@ def _apply_task_overrides(
         # Goal-based: no need for min_word_count fallback.
         # Mechanical: need at least min_word_count=1 if no other checks.
         min_word_count = merged.min_words
-        if not merged.goal and not merged.contains and not merged.matches and not merged.min_words:
+        if (
+            not merged.goal
+            and not merged.contains
+            and not merged.matches
+            and not merged.min_words
+        ):
             min_word_count = 1
         updates["success_criteria"] = SuccessCriteria(
             required_substrings=merged.contains,
@@ -666,6 +695,7 @@ def _resolve_local_model_id(base_url: Optional[str]) -> Optional[str]:
     try:
         import json
         import urllib.request
+
         url = base_url.rstrip("/") + "/models"
         with urllib.request.urlopen(url, timeout=2) as resp:
             payload = json.loads(resp.read().decode("utf-8"))

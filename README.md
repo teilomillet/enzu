@@ -74,6 +74,27 @@ result = client.run(
 
 See [examples/budget_hardstop_demo.py](examples/budget_hardstop_demo.py) for the full demo.
 
+## Typed outcomes (predictable handling)
+
+Every run returns a typed `Outcome` for deterministic error handling:
+
+```python
+from enzu import Enzu, Outcome
+
+client = Enzu()
+result = client.run("Analyze this", data=doc, tokens=100, return_report=True)
+
+if result.outcome == Outcome.SUCCESS:
+    print(result.answer)
+elif result.outcome == Outcome.BUDGET_EXCEEDED:
+    print(f"Partial result: {result.answer}" if result.partial else "Budget hit")
+elif result.outcome == Outcome.TIMEOUT:
+    handle_timeout()
+# Also: PROVIDER_ERROR, TOOL_ERROR, VERIFICATION_FAILED, CANCELLED, INVALID_REQUEST
+```
+
+See [examples/typed_outcomes_demo.py](examples/typed_outcomes_demo.py) for the full demo.
+
 ## RLM mode (reasoning over long context)
 
 When your input exceeds context limits, enzu automatically switches to RLM (Reasoning Language Model) mode—recursive subcalls that break the problem into manageable pieces:
@@ -165,6 +186,7 @@ JSON
 ## Examples
 
 - `examples/budget_hardstop_demo.py` - **Killer demo**: budget cap stops work deterministically
+- `examples/typed_outcomes_demo.py` - Typed outcomes for predictable error handling
 - `examples/python_quickstart.py` - Minimal Python usage
 - `examples/python_budget_guardrails.py` - Hard budget limits
 - `examples/rlm_with_context.py` - RLM run over longer context

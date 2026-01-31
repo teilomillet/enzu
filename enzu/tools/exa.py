@@ -20,6 +20,7 @@ Usage in sandbox:
     # Find research papers
     results = exa_search("attention mechanism", category="research paper")
 """
+
 from __future__ import annotations
 
 import os
@@ -58,6 +59,7 @@ DEFAULT_MAX_CHARACTERS: Optional[int] = None
 @dataclass
 class ExaResult:
     """Single search result with content."""
+
     url: str
     title: str
     text: Optional[str] = None
@@ -301,15 +303,17 @@ class ExaClient:
         """Parse API response into ExaResult objects."""
         results = []
         for item in data.get("results", []):
-            results.append(ExaResult(
-                url=item.get("url", ""),
-                title=item.get("title", ""),
-                text=item.get("text"),
-                highlights=item.get("highlights"),
-                score=item.get("score"),
-                published_date=item.get("publishedDate"),
-                author=item.get("author"),
-            ))
+            results.append(
+                ExaResult(
+                    url=item.get("url", ""),
+                    title=item.get("title", ""),
+                    text=item.get("text"),
+                    highlights=item.get("highlights"),
+                    score=item.get("score"),
+                    published_date=item.get("publishedDate"),
+                    author=item.get("author"),
+                )
+            )
         return results
 
 
@@ -366,10 +370,13 @@ def _get_client() -> ExaClient:
     return _client
 
 
-def _auto_accumulate(sources: List[Dict[str, Any]], query: Optional[str] = None) -> None:
+def _auto_accumulate(
+    sources: List[Dict[str, Any]], query: Optional[str] = None
+) -> None:
     """Best-effort context accumulation for RLM ctx_get()."""
     try:
         from enzu.tools.context import ctx_add
+
         # Low-level searches should still populate the shared context store.
         ctx_add(sources, query=query)
     except Exception:

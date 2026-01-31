@@ -282,7 +282,11 @@ class RemoteWorker:
                                 elif event_type == "complete":
                                     result = _deserialize_report(parsed)
                                 elif event_type == "error":
-                                    error_msg = parsed.get("error", str(parsed)) if isinstance(parsed, dict) else str(parsed)
+                                    error_msg = (
+                                        parsed.get("error", str(parsed))
+                                        if isinstance(parsed, dict)
+                                        else str(parsed)
+                                    )
 
                             event_type = None
                             data_buffer = []
@@ -383,7 +387,9 @@ class AdaptiveScheduler:
         # Score: capacity * (1 / avg_duration) - favor fast workers
         def score(w: Union[LocalWorker, RemoteWorker]) -> float:
             capacity_score = w.available_capacity
-            speed_score = 1.0 / max(w.stats.avg_duration, 0.1) if w.stats.completed > 0 else 1.0
+            speed_score = (
+                1.0 / max(w.stats.avg_duration, 0.1) if w.stats.completed > 0 else 1.0
+            )
             return capacity_score * speed_score
 
         return max(available, key=score)
@@ -417,7 +423,10 @@ class BudgetState:
     def check(self, limit: BudgetLimit) -> Optional[str]:
         """Returns error message if budget exceeded, None if OK."""
         with self._lock:
-            if limit.max_cost_usd is not None and self.total_cost_usd >= limit.max_cost_usd:
+            if (
+                limit.max_cost_usd is not None
+                and self.total_cost_usd >= limit.max_cost_usd
+            ):
                 return f"Budget exceeded: ${self.total_cost_usd:.4f} >= ${limit.max_cost_usd:.4f}"
             if limit.max_tasks is not None and self.total_tasks >= limit.max_tasks:
                 return f"Task limit exceeded: {self.total_tasks} >= {limit.max_tasks}"
@@ -433,6 +442,7 @@ class BudgetState:
 
 class BudgetExceededError(Exception):
     """Raised when coordinator-level budget is exceeded."""
+
     pass
 
 

@@ -4,6 +4,7 @@ RLM system prompt constants.
 Extracted from engine.py for modularity. These are injected into
 the system prompt based on context size and available tools.
 """
+
 from __future__ import annotations
 
 

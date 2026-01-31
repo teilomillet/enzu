@@ -20,6 +20,7 @@ Usage:
 Thread safety: Uses threading.Lock for provider creation.
 The OpenAI client's httpx.Client is thread-safe for concurrent requests.
 """
+
 from __future__ import annotations
 
 import atexit
@@ -50,6 +51,7 @@ _current_total_requests: int = 0
 
 class CapacityExceededError(Exception):
     """Raised when request capacity limit is exceeded."""
+
     pass
 
 
@@ -105,11 +107,14 @@ def get_provider(
     # Resolve base_url from registry if not provided
     config = get_provider_config(name)
     if config is None:
-        raise ValueError(f"Unknown provider: {name}. Use register_provider() to add custom providers.")
+        raise ValueError(
+            f"Unknown provider: {name}. Use register_provider() to add custom providers."
+        )
 
     effective_base_url = base_url or config.get("base_url")
     effective_supports_responses = (
-        supports_responses if supports_responses is not None
+        supports_responses
+        if supports_responses is not None
         else config.get("supports_responses", False)
     )
 
@@ -202,7 +207,9 @@ def _check_capacity() -> None:
             )
 
 
-def close_provider(name: str, *, api_key: Optional[str] = None, base_url: Optional[str] = None) -> bool:
+def close_provider(
+    name: str, *, api_key: Optional[str] = None, base_url: Optional[str] = None
+) -> bool:
     """
     Close and remove a specific provider from the pool.
 

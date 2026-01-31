@@ -105,14 +105,14 @@ def _snapshot_dir(config: FSConfig, path: str, depth: int) -> Dict[str, Any]:
     with os.scandir(target) as it:
         for entry in it:
             if entry.is_dir(follow_symlinks=False):
-                children.append(
-                    _snapshot_dir(config, entry.path, depth - 1)
-                )
+                children.append(_snapshot_dir(config, entry.path, depth - 1))
             else:
                 children.append(_entry_info(config, entry))
             if len(children) >= config.max_entries:
                 break
-    children.sort(key=lambda item: (not item["is_dir"], str(item.get("name", "")).lower()))
+    children.sort(
+        key=lambda item: (not item["is_dir"], str(item.get("name", "")).lower())
+    )
     node["children"] = children
     return node
 
@@ -149,7 +149,10 @@ def build_fs_helpers(
             final_path = dst_path
         final_path.parent.mkdir(parents=True, exist_ok=True)
         shutil.move(str(src_path), str(final_path))
-        return {"src": _rel_path(config, src_path), "dst": _rel_path(config, final_path)}
+        return {
+            "src": _rel_path(config, src_path),
+            "dst": _rel_path(config, final_path),
+        }
 
     return {
         "__fs_tools_available__": True,

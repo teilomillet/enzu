@@ -6,6 +6,7 @@ where each step consumes tokens and multiple subcalls may run concurrently.
 
 Thread-safe: _TokenBudgetPool uses locks for concurrent llm_batch calls.
 """
+
 from __future__ import annotations
 
 import threading
@@ -20,12 +21,12 @@ CRITICAL_THRESHOLD_METADATA_KEY = "budget_critical_threshold"
 class TokenBudgetPool:
     """
     Thread-safe token budget pool for multi-step execution.
-    
+
     Tracks max_total_tokens across concurrent operations:
     - reserve(): claim tokens before LLM call
     - commit(): record actual usage after call completes
     - release(): return unused reservation on error
-    
+
     Used by llm_batch() where multiple LLM calls run in parallel.
     """
 
@@ -43,17 +44,19 @@ class TokenBudgetPool:
     ) -> tuple[int, int]:
         """
         Reserve tokens for an LLM call.
-        
+
         Returns (output_cap, reserved_total):
         - output_cap: max output tokens allowed for this call
         - reserved_total: total tokens reserved (prompt + output)
-        
+
         If tokenizer unavailable (prompt_tokens=None), uses conservative estimate.
         """
         if self._max_total_tokens is None:
             return requested_output_tokens, 0
         with self._lock:
-            remaining = self._max_total_tokens - self._used_tokens - self._reserved_tokens
+            remaining = (
+                self._max_total_tokens - self._used_tokens - self._reserved_tokens
+            )
             if remaining <= 0:
                 return 0, 0
             prompt = prompt_tokens or 0
@@ -108,17 +111,19 @@ class TokenBudgetPool:
     def reserve_total(self, total_tokens: int) -> int:
         """
         Reserve a fixed total token budget for an entire operation (e.g., subcall).
-        
+
         Unlike reserve() which estimates based on prompt+output, this reserves
         a specific total amount for operations that may have multiple internal steps.
-        
+
         Returns the amount actually reserved (may be less than requested if budget low).
         Returns 0 if no budget available.
         """
         if self._max_total_tokens is None:
             return total_tokens  # No limit, grant full request
         with self._lock:
-            remaining = self._max_total_tokens - self._used_tokens - self._reserved_tokens
+            remaining = (
+                self._max_total_tokens - self._used_tokens - self._reserved_tokens
+            )
             if remaining <= 0:
                 return 0
             granted = min(total_tokens, remaining)
@@ -131,7 +136,9 @@ class TokenBudgetPool:
             max_tokens = self._max_total_tokens
             used = self._used_tokens
             reserved = self._reserved_tokens
-            remaining = None if max_tokens is None else max(0, max_tokens - used - reserved)
+            remaining = (
+                None if max_tokens is None else max(0, max_tokens - used - reserved)
+            )
             return {
                 "max_total_tokens": max_tokens,
                 "used_tokens": used,
@@ -144,7 +151,7 @@ class TokenBudgetPool:
 class BudgetTracker:
     """
     Accumulated usage tracker for budget limit checks.
-    
+
     Tracks cumulative output_tokens, total_tokens, cost_usd across steps.
     Used to determine when to stop execution due to budget exhaustion.
     """
@@ -176,10 +183,7 @@ class BudgetTracker:
 
     def is_exhausted(self) -> bool:
         """Check if any budget limit is reached."""
-        if (
-            self._budget.max_tokens
-            and self._output_tokens >= self._budget.max_tokens
-        ):
+        if self._budget.max_tokens and self._output_tokens >= self._budget.max_tokens:
             return True
         if (
             self._budget.max_total_tokens
@@ -223,15 +227,15 @@ class BudgetTracker:
         remaining_total_tokens: Optional[int] = None,
     ) -> int:
         """Compute max_output_tokens for next step, reduced as budget depletes.
-        
+
         Scales down output token limit based on remaining budget to prevent
         truncation, then clamps to remaining budget if available.
-        
+
         Args:
             base_max: The default max_output_tokens for the task
             remaining_output_tokens: Optional remaining output token budget
             remaining_total_tokens: Optional remaining total token budget
-            
+
         Returns:
             Adjusted max_output_tokens for the next LLM call (never exceeds base_max)
         """
@@ -281,7 +285,9 @@ def accumulate_usage(
     if isinstance(input_tokens, int):
         accumulator["input_tokens"] = accumulator.get("input_tokens", 0) + input_tokens
     if isinstance(output_tokens, int):
-        accumulator["output_tokens"] = accumulator.get("output_tokens", 0) + output_tokens
+        accumulator["output_tokens"] = (
+            accumulator.get("output_tokens", 0) + output_tokens
+        )
     if isinstance(total_tokens, int):
         accumulator["total_tokens"] = accumulator.get("total_tokens", 0) + total_tokens
     if isinstance(cost_usd, (int, float)):
@@ -329,8 +335,12 @@ def build_budget_usage(
     cost_usd = normalized.get("cost_usd")
 
     # Convert float tokens to int for check_budget_limits
-    output_tokens_int = int(output_tokens) if isinstance(output_tokens, (int, float)) else None
-    total_tokens_int = int(total_tokens) if isinstance(total_tokens, (int, float)) else None
+    output_tokens_int = (
+        int(output_tokens) if isinstance(output_tokens, (int, float)) else None
+    )
+    total_tokens_int = (
+        int(total_tokens) if isinstance(total_tokens, (int, float)) else None
+    )
 
     limits_exceeded = check_budget_limits(
         budget, elapsed_seconds, output_tokens_int, total_tokens_int, cost_usd

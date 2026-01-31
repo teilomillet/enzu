@@ -3,26 +3,26 @@ enzu - Run LLM tasks with budgets, not open-ended conversations.
 
 Module-level API (recommended):
     import enzu
-    
+
     enzu.ask("What is 2+2?")
     enzu.run("Analyze this", data=logs)
-    
+
     for chunk in enzu.stream("Write a story"):
         print(chunk, end="", flush=True)
 
 Factory for configured instances:
     from enzu import new
-    
+
     client = new("gpt-4o")
     client.run("Hello")
-    
+
     # Multi-model setup
     gpt = new("gpt-4o", provider="openai")
     claude = new("claude-3-5-sonnet", provider="anthropic")
 
 Multi-turn sessions:
     import enzu
-    
+
     chat = enzu.session(max_cost_usd=5.00)
     chat.run("Find the bug", data=logs)
     chat.run("Fix it")
@@ -50,6 +50,7 @@ from enzu.models import (  # noqa: F401
     Check,
     ExecutionReport,
     Limits,
+    Outcome,
     RLMExecutionReport,
     SuccessCriteria,
 )
@@ -189,6 +190,7 @@ from enzu.sandbox import (  # noqa: F401
     get_lifecycle_manager,
 )
 
+
 # =============================================================================
 # Lazy imports for optional tools - fail at use-time, not import-time
 # =============================================================================
@@ -205,6 +207,7 @@ def __getattr__(name: str):
     }
     if name in _EXA_TOOLS:
         from enzu.tools import exa as _exa_module
+
         return getattr(_exa_module, name)
 
     raise AttributeError(f"module 'enzu' has no attribute {name!r}")

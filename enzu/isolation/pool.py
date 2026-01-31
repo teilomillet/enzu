@@ -4,6 +4,7 @@ Container pool management.
 Maintains a warm pool of containers for low-latency acquisition.
 Handles scaling, health checks, and lifecycle management.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -61,7 +62,7 @@ class ContainerPool:
         if self._seccomp_profile_path is None:
             fd, path = tempfile.mkstemp(suffix=".json", prefix="enzu_pool_seccomp_")
             try:
-                with os.fdopen(fd, 'w') as f:
+                with os.fdopen(fd, "w") as f:
                     json.dump(DEFAULT_SECCOMP_PROFILE, f)
                 self._seccomp_profile_path = path
             except Exception:
@@ -78,13 +79,13 @@ class ContainerPool:
         await self._ensure_image()
 
         self._running = True
-        
+
         # Spawn initial containers
         logger.info(f"Filling pool with {self._config.min_warm} warm containers...")
         spawn_tasks = []
         for _ in range(self._config.min_warm):
             spawn_tasks.append(self._spawn_and_add())
-        
+
         if spawn_tasks:
             await asyncio.gather(*spawn_tasks)
 
@@ -100,7 +101,7 @@ class ContainerPool:
             raise RuntimeError("Pool not running")
 
         timeout = timeout or self._config.acquire_timeout_seconds
-        
+
         # Check if we need to spawn more (if pool is empty but we have capacity)
         async with self._lock:
             total_count = self._warm.qsize() + len(self._busy) + self._spawning
@@ -108,10 +109,7 @@ class ContainerPool:
                 asyncio.create_task(self._spawn_and_add())
 
         try:
-            container = await asyncio.wait_for(
-                self._warm.get(),
-                timeout=timeout
-            )
+            container = await asyncio.wait_for(self._warm.get(), timeout=timeout)
         except asyncio.TimeoutError:
             raise TimeoutError(
                 f"No container available after {timeout}s. "
@@ -124,7 +122,10 @@ class ContainerPool:
             # Trigger background spawn if below min_warm
             # But only if we haven't exceeded max_pool
             total_count = self._warm.qsize() + len(self._busy) + self._spawning
-            if self._warm.qsize() < self._config.min_warm and total_count < self._config.max_pool:
+            if (
+                self._warm.qsize() < self._config.min_warm
+                and total_count < self._config.max_pool
+            ):
                 asyncio.create_task(self._spawn_and_add())
 
         return container
@@ -190,8 +191,11 @@ class ContainerPool:
 
         # Full hardening flags matching container.py security profile
         run_cmd = [
-            cmd, "run", "-d",
-            "--name", name,
+            cmd,
+            "run",
+            "-d",
+            "--name",
+            name,
             # Run as non-root user (UID 1000) for defense in depth
             "--user=1000:1000",
             # Network isolation
@@ -208,19 +212,19 @@ class ContainerPool:
             # Tmpfs for python temp files (noexec prevents executing binaries)
             "--tmpfs=/tmp:size=64m,noexec",
             self._config.image,
-            "sh", "-c", "sleep infinity"
+            "sh",
+            "-c",
+            "sleep infinity",
         ]
-        
+
         proc = await asyncio.create_subprocess_exec(
-            *run_cmd,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE
+            *run_cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
         )
         stdout, stderr = await proc.communicate()
-        
+
         if proc.returncode != 0:
             raise RuntimeError(f"Failed to spawn container: {stderr.decode()}")
-            
+
         container_id = stdout.decode().strip()
         return Container(container_id, self._runtime)
 
@@ -228,7 +232,7 @@ class ContainerPool:
         """Background helper to spawn and add to queue."""
         async with self._lock:
             self._spawning += 1
-            
+
         try:
             container = await self._spawn_container()
             await self._warm.put(container)
@@ -242,31 +246,38 @@ class ContainerPool:
         """Pull image if missing."""
         cmd = get_runtime_command(self._runtime)
         proc = await asyncio.create_subprocess_exec(
-            cmd, "image", "inspect", self._config.image,
+            cmd,
+            "image",
+            "inspect",
+            self._config.image,
             stdout=asyncio.subprocess.DEVNULL,
-            stderr=asyncio.subprocess.DEVNULL
+            stderr=asyncio.subprocess.DEVNULL,
         )
         await proc.wait()
-        
+
         if proc.returncode != 0:
             logger.info(f"Pulling image {self._config.image}...")
             pull_proc = await asyncio.create_subprocess_exec(
-                cmd, "pull", self._config.image,
+                cmd,
+                "pull",
+                self._config.image,
                 stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE
+                stderr=asyncio.subprocess.PIPE,
             )
             _, stderr = await pull_proc.communicate()
             if pull_proc.returncode != 0:
-                raise RuntimeError(f"Failed to pull image {self._config.image}: {stderr.decode()}")
+                raise RuntimeError(
+                    f"Failed to pull image {self._config.image}: {stderr.decode()}"
+                )
 
     async def _idle_reaper(self) -> None:
         """Periodically destroy idle containers if we have more than min_warm."""
         while self._running:
-            await asyncio.sleep(60) # Run every minute
-            
+            await asyncio.sleep(60)  # Run every minute
+
             # Implementation caveat: asyncio.Queue doesn't support easy iteration.
             # We can only reap if we pop them, check idleness, and put them back.
-            # For simplicity in this version, we skip complex idle reaping logic 
+            # For simplicity in this version, we skip complex idle reaping logic
             # and just rely on max_pool to cap usage.
             pass
 
@@ -274,12 +285,12 @@ class ContainerPool:
         """Periodically ping warm containers."""
         while self._running:
             await asyncio.sleep(self._config.health_check_interval)
-            
+
             # To check health, we must rotate the queue
             # This is tricky with concurrent acquirers.
             # Simpler approach: Check health only on acquire/release or
             # maintain a separate list of warm containers.
-            # For V1 reliability, we'll keep it simple: 
-            # Trust the container stays alive (sleep infinity) 
+            # For V1 reliability, we'll keep it simple:
+            # Trust the container stays alive (sleep infinity)
             # and fail fast on acquire()/execute() if it died.
             pass

@@ -6,6 +6,7 @@ GET /v1/tasks/{id} - Get task status/result
 GET /v1/tasks/{id}/stream - SSE stream of progress events
 DELETE /v1/tasks/{id} - Cancel a running task
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -32,16 +33,18 @@ router = APIRouter(prefix="/v1/tasks", tags=["tasks"])
 
 class TaskStatus(str, Enum):
     """Task execution status."""
-    PENDING = "pending"      # Queued, waiting for worker
-    RUNNING = "running"      # Currently executing
+
+    PENDING = "pending"  # Queued, waiting for worker
+    RUNNING = "running"  # Currently executing
     COMPLETED = "completed"  # Finished successfully
-    FAILED = "failed"        # Finished with error
+    FAILED = "failed"  # Finished with error
     CANCELLED = "cancelled"  # Cancelled by user
 
 
 @dataclass
 class ProgressEvent:
     """A progress event during task execution."""
+
     timestamp: float
     message: str
     event_type: str = "progress"  # progress, stream, budget, error
@@ -50,6 +53,7 @@ class ProgressEvent:
 @dataclass
 class TaskState:
     """In-memory state for an async task."""
+
     task_id: str
     status: TaskStatus = TaskStatus.PENDING
     created_at: float = field(default_factory=time.time)
@@ -71,11 +75,13 @@ class TaskState:
 
     def add_event(self, message: str, event_type: str = "progress") -> None:
         """Add a progress event and notify waiters."""
-        self.events.append(ProgressEvent(
-            timestamp=time.time(),
-            message=message,
-            event_type=event_type,
-        ))
+        self.events.append(
+            ProgressEvent(
+                timestamp=time.time(),
+                message=message,
+                event_type=event_type,
+            )
+        )
         # Notify all SSE waiters
         for waiter in self._event_waiters:
             waiter.set()
@@ -117,7 +123,11 @@ async def cleanup_old_tasks(max_age_seconds: int = 3600) -> int:
     to_remove = []
     async with _tasks_lock:
         for task_id, state in _tasks.items():
-            if state.status in (TaskStatus.COMPLETED, TaskStatus.FAILED, TaskStatus.CANCELLED):
+            if state.status in (
+                TaskStatus.COMPLETED,
+                TaskStatus.FAILED,
+                TaskStatus.CANCELLED,
+            ):
                 if state.completed_at and (now - state.completed_at) > max_age_seconds:
                     to_remove.append(task_id)
         for task_id in to_remove:
@@ -162,31 +172,35 @@ async def execute_task(state: TaskState, request_params: Dict[str, Any]) -> None
         # Execute based on whether it's a session task or standalone
         if state.session_id:
             store = get_session_store()
-            
+
             # Wait for lock with retry (session tasks must run sequentially)
             max_wait = 300  # 5 minutes max wait
             wait_interval = 0.5
             waited = 0.0
             lock_acquired = False
-            
+
             state.add_event("Waiting for session lock...", "progress")
-            
+
             while waited < max_wait:
                 try:
-                    lock_acquired = await store.acquire_lock(state.session_id, lock_owner)
+                    lock_acquired = await store.acquire_lock(
+                        state.session_id, lock_owner
+                    )
                     if lock_acquired:
                         break
                 except SessionNotFoundError:
                     raise
-                
+
                 await asyncio.sleep(wait_interval)
                 waited += wait_interval
-            
+
             if not lock_acquired:
-                raise RuntimeError(f"Timeout waiting for session lock after {max_wait}s")
-            
+                raise RuntimeError(
+                    f"Timeout waiting for session lock after {max_wait}s"
+                )
+
             state.add_event("Session lock acquired", "progress")
-            
+
             try:
                 # Fetch fresh session state AFTER acquiring lock
                 session = await store.get(state.session_id)
@@ -219,7 +233,7 @@ async def execute_task(state: TaskState, request_params: Dict[str, Any]) -> None
             # Standalone task: use TaskQueue for 10K+ concurrency
             state.add_event("Submitting to TaskQueue...", "progress")
             queue = await enzu_service.get_task_queue()
-            
+
             # Progress callback that feeds SSE stream
             def on_queue_progress(message: str) -> None:
                 if message.startswith("llm_stream:"):
@@ -232,7 +246,7 @@ async def execute_task(state: TaskState, request_params: Dict[str, Any]) -> None
                     state.add_event(message, "budget")
                 else:
                     state.add_event(message, "progress")
-            
+
             # Build task spec for queue submission
             task_kwargs = {
                 "data": request_params.get("data"),
@@ -245,23 +259,23 @@ async def execute_task(state: TaskState, request_params: Dict[str, Any]) -> None
             }
             # Filter out None values (except on_progress which is always set)
             task_kwargs = {k: v for k, v in task_kwargs.items() if v is not None}
-            
+
             # Submit to queue and await result
             future = await queue.submit(state.task, **task_kwargs)
             state.add_event("Task queued, waiting for worker...", "progress")
-            
+
             report = await future
-            
+
             # Extract result from report
-            if hasattr(report, 'answer'):
+            if hasattr(report, "answer"):
                 answer = report.answer or ""
-            elif hasattr(report, 'output_text'):
+            elif hasattr(report, "output_text"):
                 answer = report.output_text or ""
             else:
                 answer = str(report)
-            
-            usage = report.budget_usage if hasattr(report, 'budget_usage') else None
-            
+
+            usage = report.budget_usage if hasattr(report, "budget_usage") else None
+
             result = enzu_service.RunResult(
                 answer=answer,
                 model=queue._model,
@@ -297,11 +311,14 @@ async def execute_task(state: TaskState, request_params: Dict[str, Any]) -> None
 
 class SubmitTaskRequest(BaseModel):
     """Request to submit an async task."""
+
     task: str = Field(..., description="The task/prompt to execute")
     data: Optional[str] = Field(None, description="Context data")
     model: Optional[str] = Field(None, description="Model identifier")
     provider: Optional[str] = Field(None, description="Provider name")
-    session_id: Optional[str] = Field(None, description="Optional session ID for context")
+    session_id: Optional[str] = Field(
+        None, description="Optional session ID for context"
+    )
 
     # Budget constraints
     cost: Optional[float] = Field(None, ge=0)
@@ -315,6 +332,7 @@ class SubmitTaskRequest(BaseModel):
 
 class TaskStatusResponse(BaseModel):
     """Response with task status."""
+
     task_id: str
     status: TaskStatus
     created_at: float
@@ -332,6 +350,7 @@ class TaskStatusResponse(BaseModel):
 
 class SubmitTaskResponse(BaseModel):
     """Response after submitting a task."""
+
     task_id: str
     status: TaskStatus
     stream_url: str = Field(..., description="URL to stream progress events")

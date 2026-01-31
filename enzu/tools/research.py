@@ -7,6 +7,7 @@ for the model to gather and process web content effectively.
 Key feature: All research functions AUTO-ACCUMULATE results to the context
 store, so the RLM context grows as the model searches. No manual ctx_add() needed.
 """
+
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
@@ -28,6 +29,7 @@ def _ensure_search():
     global _search_fn, _news_fn, _papers_fn, _similar_fn
     if _search_fn is None:
         from enzu.tools.exa import exa_search, exa_news, exa_papers, exa_similar
+
         _search_fn = exa_search
         _news_fn = exa_news
         _papers_fn = exa_papers
@@ -38,6 +40,7 @@ def _auto_accumulate(sources: List[Dict[str, Any]], query: Optional[str] = None)
     """Auto-add sources to context store. Returns count added."""
     try:
         from enzu.tools.context import ctx_add
+
         return ctx_add(sources, query=query)
     except Exception:
         # Context store not available, skip accumulation
@@ -167,13 +170,12 @@ def research(
     # Filter by score when scores are available.
     # Exa Auto search (default) deprecated scores in July 2025.
     # When scores are None, keep all results and preserve API order.
-    has_scores = any(
-        isinstance(r.get("score"), (int, float)) for r in unique_results
-    )
+    has_scores = any(isinstance(r.get("score"), (int, float)) for r in unique_results)
 
     if has_scores:
         good_results = [
-            r for r in unique_results
+            r
+            for r in unique_results
             if isinstance(r.get("score"), (int, float)) and r["score"] >= min_score
         ]
         good_results.sort(
@@ -189,18 +191,24 @@ def research(
     context_parts = []
     for r in good_results:
         text = r.get("text") or ""
-        truncated = text if max_chars_per_source is None else text[:max_chars_per_source]
+        truncated = (
+            text if max_chars_per_source is None else text[:max_chars_per_source]
+        )
         published_date = r.get("published_date")
 
-        sources.append({
-            "title": r.get("title", ""),
-            "url": r.get("url", ""),
-            "text": truncated,
-            "score": r.get("score", 0),
-            "published_date": published_date,
-        })
+        sources.append(
+            {
+                "title": r.get("title", ""),
+                "url": r.get("url", ""),
+                "text": truncated,
+                "score": r.get("score", 0),
+                "published_date": published_date,
+            }
+        )
 
-        date_line = f"Published: {published_date}" if published_date else "Published: unknown"
+        date_line = (
+            f"Published: {published_date}" if published_date else "Published: unknown"
+        )
         context_parts.append(
             f"## {r.get('title', 'Untitled')}\n"
             f"Source: {r.get('url', '')}\n"
@@ -268,7 +276,11 @@ def explore(
     )
 
     if _similar_fn is None:
-        return {"sources": [], "context": "", "stats": {"error": "Search functions not initialized"}}
+        return {
+            "sources": [],
+            "context": "",
+            "stats": {"error": "Search functions not initialized"},
+        }
     try:
         results = _similar_fn(
             seed_url,
@@ -285,7 +297,8 @@ def explore(
 
     if has_scores:
         good_results = [
-            r for r in results
+            r
+            for r in results
             if isinstance(r.get("score"), (int, float)) and r["score"] >= min_score
         ]
     else:
@@ -296,18 +309,24 @@ def explore(
     context_parts = []
     for r in good_results:
         text = r.get("text") or ""
-        truncated = text if max_chars_per_source is None else text[:max_chars_per_source]
+        truncated = (
+            text if max_chars_per_source is None else text[:max_chars_per_source]
+        )
         published_date = r.get("published_date")
 
-        sources.append({
-            "title": r.get("title", ""),
-            "url": r.get("url", ""),
-            "text": truncated,
-            "score": r.get("score", 0),
-            "published_date": published_date,
-        })
+        sources.append(
+            {
+                "title": r.get("title", ""),
+                "url": r.get("url", ""),
+                "text": truncated,
+                "score": r.get("score", 0),
+                "published_date": published_date,
+            }
+        )
 
-        date_line = f"Published: {published_date}" if published_date else "Published: unknown"
+        date_line = (
+            f"Published: {published_date}" if published_date else "Published: unknown"
+        )
         context_parts.append(
             f"## {r.get('title', 'Untitled')}\n"
             f"Source: {r.get('url', '')}\n"

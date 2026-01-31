@@ -3,7 +3,7 @@ Enzu client - State-of-the-art LLM interface.
 
 Simplest usage:
     from enzu import Enzu
-    
+
     client = Enzu()  # Auto-detects from OPENAI_API_KEY or OPENROUTER_API_KEY
     answer = client.run("What is 2+2?")
 
@@ -49,9 +49,10 @@ if TYPE_CHECKING:
 @dataclass
 class StreamChunk:
     """A chunk of streamed output."""
+
     text: str
     done: bool = False
-    
+
     def __str__(self) -> str:
         return self.text
 
@@ -59,7 +60,7 @@ class StreamChunk:
 def _detect_provider_and_model() -> tuple[str, str]:
     """
     Auto-detect provider and model from environment.
-    
+
     Priority:
     1. ENZU_MODEL + ENZU_PROVIDER (explicit)
     2. OPENAI_API_KEY → openai + gpt-4o
@@ -72,22 +73,22 @@ def _detect_provider_and_model() -> tuple[str, str]:
         if provider is None or model is None:
             raise ValueError("ENZU_MODEL and ENZU_PROVIDER must both be set")
         return (provider, model)
-    
+
     if os.getenv("OPENAI_API_KEY"):
         return ("openai", "gpt-4o")
-    
+
     if os.getenv("OPENROUTER_API_KEY"):
         return ("openrouter", "openai/gpt-4o")
-    
+
     if os.getenv("ANTHROPIC_API_KEY"):
         return ("anthropic", "claude-3-5-sonnet-latest")
-    
+
     if os.getenv("MISTRAL_API_KEY"):
         return ("mistral", "mistral-large-latest")
-    
+
     if os.getenv("GROQ_API_KEY"):
         return ("groq", "llama-3.3-70b-versatile")
-    
+
     raise ValueError(
         "No API key found. Set one of: OPENAI_API_KEY, OPENROUTER_API_KEY, "
         "ANTHROPIC_API_KEY, or use Enzu(model='...', provider='...')"
@@ -97,35 +98,41 @@ def _detect_provider_and_model() -> tuple[str, str]:
 class Enzu:
     """
     Enzu client - single entry point for LLM tasks.
-    
+
     Configure once, use everywhere. Supports streaming, sessions, and budgets.
-    
+
     Examples:
         # Auto-detect from environment
         client = Enzu()
-        
+
         # Explicit model
         client = Enzu("gpt-4o")
-        
+
         # Full configuration
         client = Enzu("gpt-4o", provider="openai", cost=0.10, temperature=0.7)
-        
+
         # Streaming
         for chunk in client.stream("Write a poem"):
             print(chunk, end="")
-        
+
         # Multi-turn conversation
         chat = client.session(max_cost_usd=5.00)
         chat.run("Analyze this", data=document)
         chat.run("Explain more")
     """
-    
+
     __slots__ = (
-        "model", "provider", "api_key",
-        "_cost", "_tokens", "_seconds", "_temperature", "_max_steps",
+        "model",
+        "provider",
+        "api_key",
+        "_cost",
+        "_tokens",
+        "_seconds",
+        "_temperature",
+        "_max_steps",
         "_provider_instance",
     )
-    
+
     def __init__(
         self,
         model: Optional[str] = None,
@@ -140,7 +147,7 @@ class Enzu:
     ):
         """
         Create an Enzu client.
-        
+
         Args:
             model: Model identifier. If None, auto-detects from environment.
             provider: Provider name. If None, auto-detects from environment.
@@ -158,7 +165,7 @@ class Enzu:
             raise ValueError("model is required when provider is specified")
         elif provider is None:
             provider = "openrouter"
-        
+
         self.model: str = model
         self.provider: str = provider
         self.api_key: Optional[str] = api_key
@@ -168,9 +175,10 @@ class Enzu:
         self._temperature: Optional[float] = temperature
         self._max_steps: Optional[int] = max_steps
         self._provider_instance: Optional[BaseProvider] = None
-        
+
         if cost is not None and provider != "openrouter":
             import warnings
+
             warnings.warn(
                 f"cost= budget is only enforced with OpenRouter (provider={provider!r}). "
                 f"Other providers don't report cost in API responses. "
@@ -178,20 +186,20 @@ class Enzu:
                 UserWarning,
                 stacklevel=2,
             )
-    
+
     def __enter__(self) -> "Enzu":
         return self
-    
+
     def __exit__(self, *args: Any) -> None:
         pass
-    
+
     def __repr__(self) -> str:
         return f"Enzu({self.model!r}, provider={self.provider!r})"
-    
+
     # =========================================================================
     # Configuration methods (fluent API)
     # =========================================================================
-    
+
     def with_model(self, model: str) -> "Enzu":
         """Return a new client with a different model."""
         return Enzu(
@@ -204,7 +212,7 @@ class Enzu:
             temperature=self._temperature,
             max_steps=self._max_steps,
         )
-    
+
     def with_budget(
         self,
         *,
@@ -223,11 +231,11 @@ class Enzu:
             temperature=self._temperature,
             max_steps=self._max_steps,
         )
-    
+
     # =========================================================================
     # Core methods
     # =========================================================================
-    
+
     def run(
         self,
         task: str,
@@ -251,7 +259,7 @@ class Enzu:
     ) -> Union[str, ExecutionReport, RLMExecutionReport]:
         """
         Run a task and return the answer.
-        
+
         Args:
             task: The prompt/task to execute.
             data: Context data. Triggers RLM (reasoning) mode.
@@ -270,12 +278,12 @@ class Enzu:
             sandbox: Pre-constructed sandbox (root run only).
             sandbox_factory: Factory for creating sandboxes with llm callbacks.
             runtime: Custom RLM runtime backend.
-            
+
         Returns:
             Answer string, or ExecutionReport/RLMExecutionReport if return_report=True.
         """
         from enzu.api import run as enzu_run
-        
+
         return enzu_run(
             task,
             model=self.model,
@@ -298,7 +306,7 @@ class Enzu:
             sandbox_factory=sandbox_factory,
             runtime=runtime,
         )
-    
+
     def stream(
         self,
         task: str,
@@ -309,19 +317,19 @@ class Enzu:
     ) -> Iterator[str]:
         """
         Stream a response, yielding text chunks as they arrive.
-        
+
         For simple chat-style streaming. For complex tasks with data,
         use run() with on_progress callback.
-        
+
         Args:
             task: The prompt to execute.
             data: Optional context (system message).
             tokens: Max output tokens.
             temperature: Temperature (0.0-2.0).
-            
+
         Yields:
             Text chunks as they are generated.
-            
+
         Example:
             for chunk in client.stream("Write a haiku"):
                 print(chunk, end="", flush=True)
@@ -329,15 +337,15 @@ class Enzu:
         """
         from enzu.api import _resolve_provider
         from enzu.models import Budget, SuccessCriteria, TaskSpec
-        
+
         provider = _resolve_provider(
             self.provider,
             api_key=self.api_key,
         )
-        
+
         max_tokens = tokens if tokens is not None else self._tokens or 1024
         temp = temperature if temperature is not None else self._temperature
-        
+
         spec = TaskSpec(
             task_id="stream",
             input_text=task if not data else f"{data}\n\n{task}",
@@ -347,18 +355,18 @@ class Enzu:
             max_output_tokens=max_tokens,
             temperature=temp,
         )
-        
+
         chunks: List[str] = []
-        
+
         def collect_chunk(event: ProgressEvent) -> None:
             if event.is_partial and event.message:
                 chunks.append(event.message)
-        
+
         provider.stream(spec, on_progress=collect_chunk)
-        
+
         for chunk in chunks:
             yield chunk
-    
+
     def session(
         self,
         *,
@@ -368,18 +376,18 @@ class Enzu:
     ) -> Session:
         """
         Create a conversation session.
-        
+
         Sessions maintain history across multiple run() calls, enabling
         multi-turn conversations.
-        
+
         Args:
             max_cost_usd: Session-wide cost cap.
             max_tokens: Session-wide output token cap (cumulative).
             history_max_chars: Max chars of history to retain.
-            
+
         Returns:
             Session configured with this client's model/provider.
-            
+
         Example:
             chat = client.session(max_cost_usd=5.00)
             chat.run("Find the bug", data=logs)
@@ -395,22 +403,22 @@ class Enzu:
             max_tokens=max_tokens,
             history_max_chars=history_max_chars,
         )
-    
+
     # =========================================================================
     # Convenience methods
     # =========================================================================
-    
+
     def ask(self, question: str) -> str:
         """
         Simple Q&A - shortest path to an answer.
-        
+
         Equivalent to run() but with a clearer intent for simple questions.
-        
+
         Example:
             answer = client.ask("What is the capital of France?")
         """
         return self.run(question)  # type: ignore
-    
+
     def analyze(
         self,
         task: str,
@@ -421,15 +429,15 @@ class Enzu:
     ) -> str:
         """
         Analyze data with a task/question.
-        
+
         Uses RLM (reasoning) mode for complex analysis.
-        
+
         Args:
             task: What to do with the data.
             data: The data to analyze.
             cost: Max cost in USD.
             goal: Success criteria for the analysis.
-            
+
         Example:
             answer = client.analyze(
                 "Find the root cause of the error",
@@ -438,7 +446,7 @@ class Enzu:
             )
         """
         return self.run(task, data=data, cost=cost, goal=goal)  # type: ignore
-    
+
     def batch(
         self,
         tasks: List[str],
@@ -447,14 +455,14 @@ class Enzu:
     ) -> List[str]:
         """
         Run multiple tasks and return all answers.
-        
+
         Tasks are executed sequentially. For parallel execution,
         use the queue module.
-        
+
         Args:
             tasks: List of tasks/prompts.
             data: Optional shared context for all tasks.
-            
+
         Returns:
             List of answers in the same order as tasks.
         """
@@ -464,6 +472,7 @@ class Enzu:
 # =============================================================================
 # Module-level API - The primary interface
 # =============================================================================
+
 
 def new(
     model: Optional[str] = None,
@@ -478,13 +487,13 @@ def new(
 ) -> Enzu:
     """
     Create a new Enzu client.
-    
+
     Example:
         from enzu import new
-        
+
         client = new("gpt-4o")
         client.run("Hello")
-        
+
         # Multi-model setup
         gpt = new("gpt-4o", provider="openai")
         claude = new("claude-3-5-sonnet", provider="anthropic")
@@ -504,7 +513,7 @@ def new(
 def ask(question: str, **kwargs: Any) -> str:
     """
     Simple Q&A - shortest path to an answer.
-    
+
     Example:
         import enzu
         enzu.ask("What is 2+2?")
@@ -528,12 +537,14 @@ def run(
 ) -> str:
     """
     Run a task and return the answer.
-    
+
     Example:
         import enzu
         enzu.run("Analyze this code", data=source_code)
     """
-    client = Enzu(model, provider=provider, cost=cost, tokens=tokens, temperature=temperature)
+    client = Enzu(
+        model, provider=provider, cost=cost, tokens=tokens, temperature=temperature
+    )
     return client.run(
         task,
         data=data,
@@ -555,7 +566,7 @@ def stream(
 ) -> Iterator[str]:
     """
     Stream a response, yielding text chunks.
-    
+
     Example:
         import enzu
         for chunk in enzu.stream("Write a poem"):
@@ -574,7 +585,7 @@ def session(
 ) -> Session:
     """
     Create a conversation session.
-    
+
     Example:
         import enzu
         chat = enzu.session(max_cost_usd=5.00)
@@ -596,7 +607,7 @@ def analyze(
 ) -> str:
     """
     Analyze data with reasoning.
-    
+
     Example:
         import enzu
         enzu.analyze("Find the root cause", data=logs, cost=1.00)

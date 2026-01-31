@@ -8,6 +8,7 @@ POST /v1/sessions/{id}/run/async - Submit async task for session
 GET /v1/sessions/{id}/events - SSE stream of session events
 DELETE /v1/sessions/{id} - Delete session
 """
+
 import asyncio
 from typing import AsyncGenerator
 
@@ -67,7 +68,9 @@ async def create_session(
     # Store the session
     session_id = await store.create(session, ttl_seconds=ttl)
 
-    provider_name = session.provider if isinstance(session.provider, str) else session.provider.name
+    provider_name = (
+        session.provider if isinstance(session.provider, str) else session.provider.name
+    )
     return CreateSessionResponse(
         session_id=session_id,
         model=session.model,
@@ -111,7 +114,9 @@ async def get_session(
         for ex in session.exchanges
     ]
 
-    provider_name = session.provider if isinstance(session.provider, str) else session.provider.name
+    provider_name = (
+        session.provider if isinstance(session.provider, str) else session.provider.name
+    )
     return SessionStateResponse(
         session_id=session_id,
         model=session.model,
@@ -149,7 +154,9 @@ async def run_in_session(
     Returns the answer and updated session usage.
     """
     store = get_session_store()
-    request_id = getattr(request.state, "request_id", None) or get_request_id() or "unknown"
+    request_id = (
+        getattr(request.state, "request_id", None) or get_request_id() or "unknown"
+    )
 
     # Get session
     try:
@@ -317,7 +324,11 @@ async def stream_session_events(
                     sent_count += 1
                 sent_events[task.task_id] = sent_count
 
-            active_tasks = [t for t in session_tasks if t.status in (TaskStatus.PENDING, TaskStatus.RUNNING)]
+            active_tasks = [
+                t
+                for t in session_tasks
+                if t.status in (TaskStatus.PENDING, TaskStatus.RUNNING)
+            ]
             if not active_tasks:
                 yield ": no active tasks\n\n"
 

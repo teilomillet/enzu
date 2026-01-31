@@ -4,6 +4,7 @@ RLM feedback generation: error hints, code analysis, structured feedback.
 Extracted from engine.py for modularity. Single responsibility:
 translate execution results into actionable guidance for the model.
 """
+
 from __future__ import annotations
 
 import re
@@ -48,27 +49,27 @@ def analyze_code_patterns(code: str) -> List[str]:
     warnings = []
 
     # Over-delegation: llm_query inside a loop
-    has_loop = re.search(r'(for|while)\s+.+:', code)
+    has_loop = re.search(r"(for|while)\s+.+:", code)
     if has_loop:
-        post_loop = code[has_loop.end():]
-        if 'llm_query' in post_loop:
+        post_loop = code[has_loop.end() :]
+        if "llm_query" in post_loop:
             warnings.append(
                 "llm_query inside loop (called N times at runtime). "
                 "Batch chunks: llm_query(f'Process:\\n{{chunk1}}\\n{{chunk2}}')"
             )
 
     # Passing full context to llm_query without filtering
-    if re.search(r'llm_query\([^)]*\b(context|data)\b[^)]*\)', code):
-        if not re.search(r'(context|data)\[', code) and 'for' not in code:
+    if re.search(r"llm_query\([^)]*\b(context|data)\b[^)]*\)", code):
+        if not re.search(r"(context|data)\[", code) and "for" not in code:
             warnings.append(
                 "Passing full context to llm_query. "
                 "Filter/chunk first: chunks = [context[1][i:i+1000] for i in range(0, len(context[1]), 1000)]"
             )
 
     # Code-doable tasks delegated to llm_query
-    code_doable = ['count', 'filter', 'sort', 'format', 'join', 'split', 'len']
+    code_doable = ["count", "filter", "sort", "format", "join", "split", "len"]
     for keyword in code_doable:
-        if re.search(rf'llm_query\([^)]*\b{keyword}\b[^)]*\)', code, re.I):
+        if re.search(rf"llm_query\([^)]*\b{keyword}\b[^)]*\)", code, re.I):
             warnings.append(
                 f"'{keyword}' can be done in code. Reserve llm_query for semantic tasks "
                 "(classification, summarization, interpretation)."

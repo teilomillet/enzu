@@ -3,6 +3,7 @@ API key authentication.
 
 Uses constant-time comparison to prevent timing attacks.
 """
+
 import hmac
 from typing import Optional
 

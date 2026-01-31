@@ -16,21 +16,40 @@ from enzu.rlm import RLMEngine
 
 
 def _parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Run a single enzu task from JSON stdin.")
-    parser.add_argument("--provider", help="Provider name (e.g., openrouter, openai, ollama, lmstudio).")
+    parser = argparse.ArgumentParser(
+        description="Run a single enzu task from JSON stdin."
+    )
+    parser.add_argument(
+        "--provider", help="Provider name (e.g., openrouter, openai, ollama, lmstudio)."
+    )
     parser.add_argument("--api-key", help="API key override.")
     parser.add_argument("--model", help="Model override.")
     # Keep CLI modes aligned with enzu.schema.RunPayload and --print-schema output.
-    parser.add_argument("--mode", choices=["chat", "rlm", "automode"], help="Execution mode.")
+    parser.add_argument(
+        "--mode", choices=["chat", "rlm", "automode"], help="Execution mode."
+    )
     parser.add_argument("--task", help="Task text (used when stdin is empty).")
     parser.add_argument("--task-id", help="Task id override (used with --task).")
     parser.add_argument("--context-file", help="Context file for RLM mode.")
     parser.add_argument("--max-steps", type=int, help="Max RLM steps.")
-    parser.add_argument("--progress", action="store_true", help="Emit progress to stderr.")
-    parser.add_argument("--print-schema", action="store_true", help="Print JSON schema bundle to stdout and exit.")
+    parser.add_argument(
+        "--progress", action="store_true", help="Emit progress to stderr."
+    )
+    parser.add_argument(
+        "--print-schema",
+        action="store_true",
+        help="Print JSON schema bundle to stdout and exit.",
+    )
     parser.add_argument("--fs-root", help="Filesystem root for automode (required).")
-    parser.add_argument("--fs-snapshot-depth", type=int, default=2, help="Automode snapshot depth.")
-    parser.add_argument("--fs-max-entries", type=int, default=200, help="Automode max entries per directory.")
+    parser.add_argument(
+        "--fs-snapshot-depth", type=int, default=2, help="Automode snapshot depth."
+    )
+    parser.add_argument(
+        "--fs-max-entries",
+        type=int,
+        default=200,
+        help="Automode max entries per directory.",
+    )
     return parser.parse_args()
 
 
@@ -68,7 +87,9 @@ def _resolve_task(
     return task_spec_from_payload(data, model_override=model_override)
 
 
-def _resolve_context(data: Dict[str, Any], context_file: Optional[str]) -> Optional[str]:
+def _resolve_context(
+    data: Dict[str, Any], context_file: Optional[str]
+) -> Optional[str]:
     if context_file:
         with open(context_file, "r", encoding="utf-8") as handle:
             return handle.read()
@@ -100,7 +121,11 @@ def _prompt_choice(prompt: str, choices: list[str], default: str) -> str:
 def _guided_payload() -> Dict[str, Any]:
     # Guided mode builds the same JSON payload the CLI accepts.
     providers = list_providers()
-    provider_default = "openrouter" if "openrouter" in providers else (providers[0] if providers else "")
+    provider_default = (
+        "openrouter"
+        if "openrouter" in providers
+        else (providers[0] if providers else "")
+    )
     provider_prompt = (
         f"Provider [{provider_default}]: "
         if provider_default
@@ -194,7 +219,9 @@ def main() -> int:
                 max_entries=args.fs_max_entries,
                 max_depth=args.fs_snapshot_depth,
             )
-            fs_snapshot = fs_helpers["fs_snapshot"](path=".", depth=args.fs_snapshot_depth)
+            fs_snapshot = fs_helpers["fs_snapshot"](
+                path=".", depth=args.fs_snapshot_depth
+            )
             context = json.dumps(
                 {"fs_root": fs_helpers["fs_root"](), "fs_snapshot": fs_snapshot},
                 ensure_ascii=True,
@@ -209,7 +236,9 @@ def main() -> int:
                     }
                 }
             )
-            rlm_engine = RLMEngine(max_steps=args.max_steps) if args.max_steps else RLMEngine()
+            rlm_engine = (
+                RLMEngine(max_steps=args.max_steps) if args.max_steps else RLMEngine()
+            )
             rlm_engine.run(
                 task,
                 provider_instance,
@@ -218,7 +247,9 @@ def main() -> int:
                 on_progress=on_rlm_progress if args.progress else None,
             )
         elif mode == "rlm":
-            rlm_engine = RLMEngine(max_steps=args.max_steps) if args.max_steps else RLMEngine()
+            rlm_engine = (
+                RLMEngine(max_steps=args.max_steps) if args.max_steps else RLMEngine()
+            )
             # RLMEngine.run requires data to be str, not Optional[str]
             rlm_report = rlm_engine.run(
                 task,

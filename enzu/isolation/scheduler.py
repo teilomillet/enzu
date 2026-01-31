@@ -32,9 +32,9 @@ Usage (single coordinator, multiple workers):
     coordinator = DistributedCoordinator()
     coordinator.register_node("node-1", "http://node1:8000", capacity=50)
     coordinator.register_node("node-2", "http://node2:8000", capacity=50)
-    
+
     result = await coordinator.submit(task_spec, data="...")
-    
+
     # On worker nodes
     worker = WorkerNode(node_id="node-1", max_workers=50)
     await worker.start()
@@ -53,6 +53,7 @@ Phase 5 Production Hardening:
     - Metrics: Prometheus-compatible observability
 
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -80,6 +81,7 @@ logger = logging.getLogger(__name__)
 
 class NodeStatus(Enum):
     """Health status of a worker node."""
+
     HEALTHY = "healthy"
     DEGRADED = "degraded"  # responding but slow
     UNHEALTHY = "unhealthy"  # missed heartbeats
@@ -89,6 +91,7 @@ class NodeStatus(Enum):
 @dataclass
 class NodeCapacity:
     """Capacity report from a worker node."""
+
     node_id: str
     endpoint: str
     max_workers: int
@@ -97,20 +100,20 @@ class NodeCapacity:
     max_queue: int
     status: NodeStatus = NodeStatus.HEALTHY
     last_heartbeat: float = field(default_factory=time.time)
-    
+
     @property
     def available_slots(self) -> int:
         """How many more requests this node can accept."""
         queue_space = self.max_queue - self.queued
         return max(0, queue_space)
-    
+
     @property
     def load_factor(self) -> float:
         """0.0 = empty, 1.0 = full."""
         if self.max_workers == 0:
             return 1.0
         return (self.active_workers + self.queued) / (self.max_workers + self.max_queue)
-    
+
     def is_available(self) -> bool:
         """Can accept new requests."""
         return (
@@ -122,6 +125,7 @@ class NodeCapacity:
 @dataclass
 class SchedulerStats:
     """Coordinator statistics."""
+
     total_nodes: int
     healthy_nodes: int
     total_capacity: int  # sum of max_workers
@@ -134,6 +138,7 @@ class SchedulerStats:
 @dataclass
 class SubmitResult:
     """Result of submitting a request."""
+
     success: bool
     node_id: Optional[str] = None
     result: Any = None
@@ -152,6 +157,7 @@ class ProductionConfig:
     Controls health checks, circuit breakers, retry logic, and metrics.
     Disabled by default for backward compatibility.
     """
+
     # Enable Phase 5 production features
     enabled: bool = False
 
@@ -183,13 +189,13 @@ class ProductionConfig:
 class AdmissionController:
     """
     Controls admission of new requests based on system capacity.
-    
+
     Policies:
     - REJECT_WHEN_FULL: Return 429 immediately when capacity exceeded
     - QUEUE_WITH_TIMEOUT: Queue and wait up to timeout, then reject
     - ALWAYS_ACCEPT: Never reject (may cause unbounded queue growth)
     """
-    
+
     def __init__(
         self,
         max_queue_depth: int = 10000,
@@ -201,15 +207,15 @@ class AdmissionController:
         self._rejection_threshold = rejection_threshold
         self._rejected_count = 0
         self._lock = threading.Lock()
-    
+
     def should_admit(self, current_load: float, current_queue: int) -> bool:
         """
         Check if a new request should be admitted.
-        
+
         Args:
             current_load: System load factor (0.0 to 1.0)
             current_queue: Total queued requests across all nodes
-        
+
         Returns:
             True if request should be admitted, False to reject
         """
@@ -217,14 +223,14 @@ class AdmissionController:
             with self._lock:
                 self._rejected_count += 1
             return False
-        
+
         if current_load >= self._rejection_threshold:
             with self._lock:
                 self._rejected_count += 1
             return False
-        
+
         return True
-    
+
     @property
     def rejected_count(self) -> int:
         with self._lock:
@@ -320,12 +326,14 @@ class DistributedCoordinator:
         cfg = self._production_config
 
         # Retry strategy for transient failures
-        self._retry_strategy = RetryStrategy(RetryConfig(
-            max_retries=cfg.max_retries,
-            initial_backoff_seconds=cfg.initial_backoff_seconds,
-            max_backoff_seconds=cfg.max_backoff_seconds,
-            backoff_multiplier=cfg.backoff_multiplier,
-        ))
+        self._retry_strategy = RetryStrategy(
+            RetryConfig(
+                max_retries=cfg.max_retries,
+                initial_backoff_seconds=cfg.initial_backoff_seconds,
+                max_backoff_seconds=cfg.max_backoff_seconds,
+                backoff_multiplier=cfg.backoff_multiplier,
+            )
+        )
 
         # Backpressure controller for graceful degradation
         self._backpressure = BackpressureController(
@@ -381,6 +389,7 @@ class DistributedCoordinator:
         # Log audit event if audit logger available
         try:
             from enzu.isolation.audit import get_audit_logger
+
             get_audit_logger().log_node_unhealthy(node_id, reason)
         except Exception:
             pass  # Audit logging is optional
@@ -452,7 +461,7 @@ class DistributedCoordinator:
     ) -> None:
         """
         Register a worker node.
-        
+
         Args:
             node_id: Unique node identifier
             endpoint: HTTP endpoint for remote nodes, "local" for in-process
@@ -473,10 +482,13 @@ class DistributedCoordinator:
             )
             if executor is not None:
                 self._executors[node_id] = executor
-        
+
         logger.info(
             "Registered node %s: capacity=%d, queue=%d, endpoint=%s",
-            node_id, capacity, queue_size, endpoint
+            node_id,
+            capacity,
+            queue_size,
+            endpoint,
         )
 
         # Phase 5: Register with health checker and create circuit breaker
@@ -504,7 +516,7 @@ class DistributedCoordinator:
 
                 return True
             return False
-    
+
     def update_node_capacity(
         self,
         node_id: str,
@@ -534,7 +546,7 @@ class DistributedCoordinator:
         if self._metrics:
             self._metrics.set_queue_depth(node_id, queued)
             self._metrics.set_active_workers(node_id, active_workers)
-    
+
     def _select_node(self) -> Optional[NodeCapacity]:
         """
         Select best node for next request.
@@ -548,7 +560,8 @@ class DistributedCoordinator:
             # Phase 5: Filter by circuit breaker state
             if self._production_config.enabled and self._circuit_breakers:
                 available = [
-                    n for n in available
+                    n
+                    for n in available
                     if n.node_id in self._circuit_breakers
                     and self._circuit_breakers[n.node_id].allow_request()
                 ]
@@ -558,21 +571,23 @@ class DistributedCoordinator:
 
             # Sort by load factor, pick from top 3 randomly (jitter)
             available.sort(key=lambda n: n.load_factor)
-            top_candidates = available[:min(3, len(available))]
+            top_candidates = available[: min(3, len(available))]
             return random.choice(top_candidates)
-    
+
     def _get_system_load(self) -> tuple[float, int]:
         """Get system-wide load factor and total queue depth."""
         with self._nodes_lock:
-            total_capacity = sum(n.max_workers + n.max_queue for n in self._nodes.values())
+            total_capacity = sum(
+                n.max_workers + n.max_queue for n in self._nodes.values()
+            )
             total_used = sum(n.active_workers + n.queued for n in self._nodes.values())
             total_queued = sum(n.queued for n in self._nodes.values())
-            
+
             if total_capacity == 0:
                 return 1.0, 0
-            
+
             return total_used / total_capacity, total_queued
-    
+
     async def submit(
         self,
         task: Any,
@@ -635,14 +650,17 @@ class DistributedCoordinator:
         if self._metrics:
             self._metrics.set_queue_depth(
                 node.node_id,
-                self._nodes.get(node.node_id, NodeCapacity(
-                    node_id=node.node_id,
-                    endpoint="local",
-                    max_workers=0,
-                    active_workers=0,
-                    queued=0,
-                    max_queue=0,
-                )).queued,
+                self._nodes.get(
+                    node.node_id,
+                    NodeCapacity(
+                        node_id=node.node_id,
+                        endpoint="local",
+                        max_workers=0,
+                        active_workers=0,
+                        queued=0,
+                        max_queue=0,
+                    ),
+                ).queued,
             )
 
         try:
@@ -705,14 +723,17 @@ class DistributedCoordinator:
                     if self._metrics:
                         self._metrics.set_active_workers(
                             node.node_id,
-                            self._nodes.get(node.node_id, NodeCapacity(
-                                node_id=node.node_id,
-                                endpoint="local",
-                                max_workers=0,
-                                active_workers=0,
-                                queued=0,
-                                max_queue=0,
-                            )).active_workers,
+                            self._nodes.get(
+                                node.node_id,
+                                NodeCapacity(
+                                    node_id=node.node_id,
+                                    endpoint="local",
+                                    max_workers=0,
+                                    active_workers=0,
+                                    queued=0,
+                                    max_queue=0,
+                                ),
+                            ).active_workers,
                         )
 
             else:
@@ -762,17 +783,17 @@ class DistributedCoordinator:
                 node_id=node.node_id,
                 error=str(e),
             )
-    
+
     def stats(self) -> SchedulerStats:
         """Get current scheduler statistics."""
         with self._nodes_lock:
             nodes = list(self._nodes.values())
-        
+
         healthy = sum(1 for n in nodes if n.status == NodeStatus.HEALTHY)
         total_capacity = sum(n.max_workers for n in nodes)
         active = sum(n.active_workers for n in nodes)
         queued = sum(n.queued for n in nodes)
-        
+
         return SchedulerStats(
             total_nodes=len(nodes),
             healthy_nodes=healthy,
@@ -782,7 +803,7 @@ class DistributedCoordinator:
             rejected_requests=self._admission.rejected_count,
             routed_requests=self._routed_count,
         )
-    
+
     def node_capacities(self) -> List[NodeCapacity]:
         """Get capacity info for all nodes."""
         with self._nodes_lock:
@@ -792,9 +813,9 @@ class DistributedCoordinator:
 class LocalWorkerPool:
     """
     Local worker pool that integrates with the distributed coordinator.
-    
+
     Wraps the existing TaskQueue with coordinator integration.
-    
+
     Example:
         # Create worker pool
         pool = LocalWorkerPool(
@@ -802,7 +823,7 @@ class LocalWorkerPool:
             max_workers=50,
             max_queue=200,
         )
-        
+
         # Register with coordinator
         coordinator.register_node(
             "node-1",
@@ -810,11 +831,11 @@ class LocalWorkerPool:
             queue_size=200,
             executor=pool.execute,
         )
-        
+
         # Start processing
         await pool.start()
     """
-    
+
     def __init__(
         self,
         node_id: str,
@@ -831,85 +852,87 @@ class LocalWorkerPool:
         self._api_key = api_key
         self._max_workers = max_workers
         self._max_queue = max_queue
-        
+
         # Task queue
         self._queue: Optional[asyncio.Queue[Any]] = None
         self._workers: List[asyncio.Task] = []
         self._running = False
-        
+
         # Stats
         self._active = 0
         self._completed = 0
         self._failed = 0
         self._lock = asyncio.Lock()
-    
+
     async def start(self) -> None:
         """Start the worker pool."""
         if self._running:
             return
-        
+
         self._queue = asyncio.Queue(maxsize=self._max_queue)
         self._running = True
-        
+
         # Spawn workers
         for _ in range(self._max_workers):
             worker = asyncio.create_task(self._worker_loop())
             self._workers.append(worker)
-        
+
         logger.info(
             "LocalWorkerPool %s started: workers=%d, queue=%d",
-            self._node_id, self._max_workers, self._max_queue
+            self._node_id,
+            self._max_workers,
+            self._max_queue,
         )
-    
+
     async def stop(self) -> None:
         """Stop the worker pool."""
         self._running = False
-        
+
         # Cancel workers
         for worker in self._workers:
             worker.cancel()
-        
+
         if self._workers:
             await asyncio.gather(*self._workers, return_exceptions=True)
-        
+
         self._workers.clear()
         self._queue = None
-    
+
     async def execute(self, task: Dict[str, Any]) -> Any:
         """
         Execute a task. Called by coordinator.
-        
+
         Args:
             task: Dict with 'input_text', 'model', 'data', etc.
-        
+
         Returns:
             Execution result
         """
         if not self._running or self._queue is None:
             raise RuntimeError("Worker pool not started")
-        
+
         # Create future for result
         loop = asyncio.get_event_loop()
         future = loop.create_future()
-        
+
         # Queue task
         await self._queue.put((task, future))
-        
+
         # Wait for result
         return await future
-    
+
     async def _worker_loop(self) -> None:
         """Worker coroutine."""
         from enzu.api import _resolve_provider, _build_task_spec
         from enzu.engine import Engine
         from enzu.rlm import RLMEngine
-        
+
         provider = _resolve_provider(
             self._provider_name,
             api_key=self._api_key,
             use_pool=True,
         )
-        
+
         while self._running:
             try:
                 # Get task
@@ -922,10 +945,10 @@ class LocalWorkerPool:
                     )
                 except asyncio.TimeoutError:
                     continue
-                
+
                 async with self._lock:
                     self._active += 1
-                
+
                 try:
                     # Build spec
                     # _build_task_spec requires all parameters; provide defaults for missing ones
@@ -945,7 +968,7 @@ class LocalWorkerPool:
                         temperature=task.get("temperature"),
                         is_rlm=(task.get("data") is not None),
                     )
-                    
+
                     # Execute
                     data = task.get("data")
                     if data is not None:
@@ -958,32 +981,32 @@ class LocalWorkerPool:
                         chat_report = chat_engine.run(spec, provider)
                         # ExecutionReport has 'output_text' attribute
                         result = chat_report.output_text or ""
-                    
+
                     if not future.done():
                         future.set_result(result)
-                    
+
                     async with self._lock:
                         self._completed += 1
-                
+
                 except Exception as e:
                     if not future.done():
                         future.set_exception(e)
-                    
+
                     async with self._lock:
                         self._failed += 1
-                
+
                 finally:
                     # Mark task done (for queue.join())
                     if self._queue is not None:
                         self._queue.task_done()
                     async with self._lock:
                         self._active -= 1
-            
+
             except asyncio.CancelledError:
                 break
             except Exception as e:
                 logger.error("Worker error: %s", e)
-    
+
     def capacity(self) -> NodeCapacity:
         """Get current capacity for heartbeat."""
         return NodeCapacity(

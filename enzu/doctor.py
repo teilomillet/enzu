@@ -13,6 +13,7 @@ Usage:
     enzu doctor --verbose
     enzu doctor --json
 """
+
 from __future__ import annotations
 
 import os
@@ -26,6 +27,7 @@ from typing import Any, Dict, List, Optional
 @dataclass
 class CheckResult:
     """Result of a single diagnostic check."""
+
     name: str
     passed: bool
     message: str
@@ -36,6 +38,7 @@ class CheckResult:
 @dataclass
 class DoctorReport:
     """Complete diagnostic report."""
+
     checks: List[CheckResult] = field(default_factory=list)
     passed: bool = True
     warnings: int = 0
@@ -159,6 +162,7 @@ def check_container_runtime() -> CheckResult:
     try:
         from enzu.isolation.container import is_container_available
         from enzu.isolation.runtime import detect_runtime
+
         available = is_container_available()
         if available:
             try:
@@ -300,7 +304,9 @@ def main() -> int:
     import argparse
 
     parser = argparse.ArgumentParser(description="Check enzu environment")
-    parser.add_argument("--verbose", "-v", action="store_true", help="Show detailed output")
+    parser.add_argument(
+        "--verbose", "-v", action="store_true", help="Show detailed output"
+    )
     parser.add_argument("--json", action="store_true", help="Output as JSON")
     args = parser.parse_args()
 

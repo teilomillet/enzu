@@ -4,6 +4,7 @@ Enzu client wrapper for HTTP context.
 Wraps the Enzu client to run in async context and integrate with request tracking.
 Uses TaskQueue for high-concurrency (10K+) deployments with auto-scaling workers.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -43,14 +44,16 @@ def get_executor() -> ThreadPoolExecutor:
     """Get thread pool executor for sync operations."""
     global _executor
     if _executor is None:
-        _executor = ThreadPoolExecutor(max_workers=50, thread_name_prefix="enzu-session-")
+        _executor = ThreadPoolExecutor(
+            max_workers=50, thread_name_prefix="enzu-session-"
+        )
     return _executor
 
 
 async def get_task_queue() -> TaskQueue:
     """
     Get or create the global TaskQueue for standalone tasks.
-    
+
     Auto-scales workers based on queue depth:
     - Min: 10 workers (baseline capacity)
     - Max: 200 workers (10K concurrent with queue buffering)
@@ -108,7 +111,9 @@ def _extract_answer(report: ExecutionReport | RLMExecutionReport) -> str:
     return report.output_text or ""
 
 
-def _is_malformed_response(answer: str, expected_contains: Optional[List[str]] = None) -> bool:
+def _is_malformed_response(
+    answer: str, expected_contains: Optional[List[str]] = None
+) -> bool:
     """
     Detect if a response is malformed/truncated/invalid.
 

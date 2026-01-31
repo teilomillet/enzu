@@ -2,7 +2,7 @@ import os
 
 from enzu import Budget, Engine, OpenAICompatProvider, SuccessCriteria, TaskSpec
 
-MODEL = os.getenv("OPENROUTER_MODEL") or os.getenv("OPENAI_MODEL") or "gpt-4o-mini"
+MODEL = os.getenv("OPENROUTER_MODEL") or os.getenv("OPENAI_MODEL")
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 

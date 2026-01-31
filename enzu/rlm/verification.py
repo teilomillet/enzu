@@ -4,6 +4,7 @@ Output verification: shared logic for chat Engine and RLMEngine.
 Extracted to deduplicate verification between engine.py and rlm/engine.py.
 Single source of truth for success criteria checking.
 """
+
 from __future__ import annotations
 
 import re
@@ -17,8 +18,11 @@ _REGEX_TIMEOUT_SECONDS = 2
 
 
 @contextmanager
-def _regex_timeout(seconds: int = _REGEX_TIMEOUT_SECONDS) -> Generator[None, None, None]:
+def _regex_timeout(
+    seconds: int = _REGEX_TIMEOUT_SECONDS,
+) -> Generator[None, None, None]:
     """Guard against catastrophic regex backtracking via alarm signal."""
+
     def _handler(signum: int, frame: object) -> None:
         raise TimeoutError("regex timed out")
 
@@ -39,19 +43,19 @@ def verify_output(
 ) -> VerificationResult:
     """
     Verify output against success criteria.
-    
+
     Args:
         criteria: The success criteria to check against
         output_text: The output to verify
         goal_based_trust: If True and criteria has goal but no mechanical checks,
                          trust the model's judgment (RLM mode).
                          If False, always run mechanical checks (chat mode).
-    
+
     Three modes:
     1. Goal-only (RLM): model's FINAL() call is the verification. Trust model.
     2. Mechanical-only: check required_substrings, required_regex, min_word_count.
     3. Goal + Mechanical: both must pass. Goal = soft target, mechanical = hard.
-    
+
     Empty output always fails.
     """
     reasons: list[str] = []

@@ -5,7 +5,13 @@ from typing import Any, Dict, Optional, Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 from enzu.contract import DEFAULT_MAX_OUTPUT_TOKENS, DEFAULT_MIN_WORD_COUNT
-from enzu.models import Budget, ExecutionReport, RLMExecutionReport, SuccessCriteria, TaskSpec
+from enzu.models import (
+    Budget,
+    ExecutionReport,
+    RLMExecutionReport,
+    SuccessCriteria,
+    TaskSpec,
+)
 
 
 class TaskSpecInput(BaseModel):
@@ -107,7 +113,11 @@ def schema_bundle() -> Dict[str, Any]:
             "mode_requirements": {
                 "chat": {"context_required": False},
                 "rlm": {"context_required": True},
-                "automode": {"context_required": False, "fs_root_required": True, "cli_only": True},
+                "automode": {
+                    "context_required": False,
+                    "fs_root_required": True,
+                    "cli_only": True,
+                },
             },
         },
         "task_input": task_input_schema(),

@@ -10,6 +10,7 @@ Provides structured error handling with:
 
 All exceptions include structured attributes for programmatic handling.
 """
+
 from __future__ import annotations
 
 from typing import Any, Dict, Optional

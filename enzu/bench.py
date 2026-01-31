@@ -25,7 +25,9 @@ def _parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--tasks", required=True, help="Path to tasks JSONL file.")
     parser.add_argument("--matrix", help="JSON file with a list of run configs.")
-    parser.add_argument("--provider", help="Provider name (used when --matrix is absent).")
+    parser.add_argument(
+        "--provider", help="Provider name (used when --matrix is absent)."
+    )
     parser.add_argument("--model", help="Model name (used when --matrix is absent).")
     parser.add_argument("--api-key", help="API key override (single-run only).")
     parser.add_argument("--referer", help="OpenRouter HTTP-Referer header override.")
@@ -36,11 +38,17 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--context-file", help="Default context file for RLM tasks.")
     parser.add_argument("--fs-root", help="Default fs_root for automode tasks.")
     parser.add_argument("--max-steps", type=int, help="Default max RLM steps.")
-    parser.add_argument("--temperature", type=float, help="Default temperature override.")
-    parser.add_argument("--repeat", type=int, default=1, help="Repeat each task N times.")
+    parser.add_argument(
+        "--temperature", type=float, help="Default temperature override."
+    )
+    parser.add_argument(
+        "--repeat", type=int, default=1, help="Repeat each task N times."
+    )
     parser.add_argument("--output", help="Output JSONL path.")
     parser.add_argument("--summary", help="Summary JSON path.")
-    parser.add_argument("--progress", action="store_true", help="Emit progress to stderr.")
+    parser.add_argument(
+        "--progress", action="store_true", help="Emit progress to stderr."
+    )
     return parser.parse_args()
 
 
@@ -154,7 +162,9 @@ def _build_task_spec(
     model = model_override or task_data.get("model")
     if not model:
         raise ValueError("Task is missing model and no override was provided.")
-    task_id = task_data.get("task_id") or raw.get("task_id") or f"task-{uuid4().hex[:8]}"
+    task_id = (
+        task_data.get("task_id") or raw.get("task_id") or f"task-{uuid4().hex[:8]}"
+    )
     payload = {
         "task_id": task_id,
         "input_text": input_text,
@@ -162,7 +172,9 @@ def _build_task_spec(
         "budget": _normalize_budget(task_data),
         "success_criteria": _normalize_success_criteria(task_data),
         "max_output_tokens": task_data.get("max_output_tokens"),
-        "temperature": temperature_override if temperature_override is not None else task_data.get("temperature"),
+        "temperature": temperature_override
+        if temperature_override is not None
+        else task_data.get("temperature"),
         "metadata": _merge_metadata(task_data, raw),
     }
     # Use TaskSpec validation to enforce required fields and limits.
@@ -170,12 +182,16 @@ def _build_task_spec(
 
 
 def _resolve_mode(raw: Dict[str, Any], run: Dict[str, Any], default_mode: str) -> str:
-    task_mode = raw.get("mode") or (raw.get("task", {}) if isinstance(raw.get("task"), dict) else {}).get("mode")
+    task_mode = raw.get("mode") or (
+        raw.get("task", {}) if isinstance(raw.get("task"), dict) else {}
+    ).get("mode")
     run_mode = run.get("mode")
     return (task_mode or run_mode or default_mode).lower()
 
 
-def _resolve_context(raw: Dict[str, Any], default_context_file: Optional[str]) -> Optional[str]:
+def _resolve_context(
+    raw: Dict[str, Any], default_context_file: Optional[str]
+) -> Optional[str]:
     if raw.get("context") is not None:
         return raw.get("context")
     task_context = None
@@ -183,7 +199,9 @@ def _resolve_context(raw: Dict[str, Any], default_context_file: Optional[str]) -
         task_context = raw["task"].get("context")
     if task_context is not None:
         return task_context
-    context_file = raw.get("context_file") or (raw.get("task", {}) if isinstance(raw.get("task"), dict) else {}).get("context_file")
+    context_file = raw.get("context_file") or (
+        raw.get("task", {}) if isinstance(raw.get("task"), dict) else {}
+    ).get("context_file")
     if context_file:
         with open(context_file, "r", encoding="utf-8") as handle:
             return handle.read()
@@ -201,9 +219,15 @@ def _resolve_fs_root(raw: Dict[str, Any], default_root: Optional[str]) -> Option
     return default_root
 
 
-def _resolve_max_steps(raw: Dict[str, Any], run: Dict[str, Any], default_steps: Optional[int]) -> Optional[int]:
-    task_steps = raw.get("max_steps") or (raw.get("task", {}) if isinstance(raw.get("task"), dict) else {}).get("max_steps")
-    return task_steps if task_steps is not None else run.get("max_steps") or default_steps
+def _resolve_max_steps(
+    raw: Dict[str, Any], run: Dict[str, Any], default_steps: Optional[int]
+) -> Optional[int]:
+    task_steps = raw.get("max_steps") or (
+        raw.get("task", {}) if isinstance(raw.get("task"), dict) else {}
+    ).get("max_steps")
+    return (
+        task_steps if task_steps is not None else run.get("max_steps") or default_steps
+    )
 
 
 def _default_output_paths() -> tuple[Path, Path]:
@@ -260,10 +284,18 @@ def _finalize_stats(stats: Dict[str, Any]) -> Dict[str, Any]:
         "successes": stats["success"],
         "success_rate": stats["success"] / count if count else 0.0,
         "limits_exceeded": stats["limits_exceeded"],
-        "avg_elapsed_seconds": stats["elapsed_total"] / stats["elapsed_count"] if stats["elapsed_count"] else None,
-        "avg_output_tokens": stats["output_tokens_total"] / stats["output_tokens_count"] if stats["output_tokens_count"] else None,
-        "avg_total_tokens": stats["total_tokens_total"] / stats["total_tokens_count"] if stats["total_tokens_count"] else None,
-        "avg_cost_usd": stats["cost_total"] / stats["cost_count"] if stats["cost_count"] else None,
+        "avg_elapsed_seconds": stats["elapsed_total"] / stats["elapsed_count"]
+        if stats["elapsed_count"]
+        else None,
+        "avg_output_tokens": stats["output_tokens_total"] / stats["output_tokens_count"]
+        if stats["output_tokens_count"]
+        else None,
+        "avg_total_tokens": stats["total_tokens_total"] / stats["total_tokens_count"]
+        if stats["total_tokens_count"]
+        else None,
+        "avg_cost_usd": stats["cost_total"] / stats["cost_count"]
+        if stats["cost_count"]
+        else None,
     }
 
 
@@ -316,7 +348,9 @@ def _run_task(
         return engine.run(
             spec,
             provider,
-            on_progress=(lambda event: print(event.message, file=sys.stderr)) if progress else None,
+            on_progress=(lambda event: print(event.message, file=sys.stderr))
+            if progress
+            else None,
         )
     if mode == "automode":
         if not fs_root:
@@ -380,7 +414,10 @@ def main() -> int:
                 model_name = run.get("model")
                 if not provider_name or not model_name:
                     raise ValueError("Each run config must include provider and model.")
-                run_label = run.get("name") or f"{provider_name}:{model_name}:{run.get('mode', args.mode)}"
+                run_label = (
+                    run.get("name")
+                    or f"{provider_name}:{model_name}:{run.get('mode', args.mode)}"
+                )
                 provider = resolve_provider(
                     provider_name,
                     api_key=run.get("api_key") or args.api_key,
@@ -397,7 +434,8 @@ def main() -> int:
                         spec = _build_task_spec(
                             raw,
                             model_override=model_name,
-                            temperature_override=run.get("temperature") or args.temperature,
+                            temperature_override=run.get("temperature")
+                            or args.temperature,
                         )
                         context = _resolve_context(raw, args.context_file)
                         fs_root = _resolve_fs_root(raw, args.fs_root)
@@ -447,7 +485,9 @@ def main() -> int:
             "output_path": str(output_path),
         }
         with open(summary_path, "w", encoding="utf-8") as summary_handle:
-            summary_handle.write(json.dumps(summary_payload, ensure_ascii=True, indent=2))
+            summary_handle.write(
+                json.dumps(summary_payload, ensure_ascii=True, indent=2)
+            )
         print(json.dumps(summary_payload, ensure_ascii=True))
         return 0
     except Exception as exc:  # noqa: BLE001

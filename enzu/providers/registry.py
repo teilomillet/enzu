@@ -12,7 +12,10 @@ PROVIDERS: Dict[str, ProviderConfig] = {
         "supports_responses": True,
     },
     "groq": {"base_url": "https://api.groq.com/openai/v1", "supports_responses": False},
-    "together": {"base_url": "https://api.together.xyz/v1", "supports_responses": False},
+    "together": {
+        "base_url": "https://api.together.xyz/v1",
+        "supports_responses": False,
+    },
     "mistral": {"base_url": "https://api.mistral.ai/v1", "supports_responses": False},
     "gemini": {
         "base_url": "https://generativelanguage.googleapis.com/v1beta/openai/",
@@ -23,7 +26,10 @@ PROVIDERS: Dict[str, ProviderConfig] = {
         "base_url": "https://api.fireworks.ai/inference/v1",
         "supports_responses": False,
     },
-    "deepseek": {"base_url": "https://api.deepseek.com/v1", "supports_responses": False},
+    "deepseek": {
+        "base_url": "https://api.deepseek.com/v1",
+        "supports_responses": False,
+    },
     "ollama": {"base_url": "http://localhost:11434/v1", "supports_responses": False},
     "lmstudio": {"base_url": "http://localhost:1234/v1", "supports_responses": False},
 }
@@ -33,7 +39,7 @@ def validate_provider_config(name: str, config: ProviderConfig) -> None:
     """Validate provider config. Raises ValueError if invalid."""
     if not name or not isinstance(name, str):
         raise ValueError("Provider name must be a non-empty string")
-    
+
     base_url = config.get("base_url")
     if base_url:
         parsed = urlparse(base_url)
@@ -46,13 +52,13 @@ def register_provider(
 ) -> None:
     """
     Register a custom provider.
-    
+
     Args:
         name: Provider identifier
         base_url: API base URL
         supports_responses: True if provider supports Open Responses API
         **extra: Additional provider-specific config
-    
+
     Example:
         enzu.register_provider("myapi", base_url="https://api.mycompany.com/v1", supports_responses=True)
     """

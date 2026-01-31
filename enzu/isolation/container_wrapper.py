@@ -1,9 +1,10 @@
 """
 Container wrapper for warm pool.
 
-Manages a single warm container and executes code inside it 
+Manages a single warm container and executes code inside it
 via fresh process spawning (podman exec).
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -212,9 +213,7 @@ class Container:
 
         # Prepare payload
         try:
-            namespace_b64 = base64.b64encode(
-                pickle.dumps(namespace)
-            ).decode("ascii")
+            namespace_b64 = base64.b64encode(pickle.dumps(namespace)).decode("ascii")
         except Exception as e:
             return SandboxResult(
                 stdout="",
@@ -222,14 +221,16 @@ class Container:
                 final_answer=None,
                 namespace_updates={},
                 resource_usage={},
-                exit_code=-1
+                exit_code=-1,
             )
-            
+
         # Convert config to JSON-serializable dict
         if hasattr(config, "__dataclass_fields__"):
             config_dict = asdict(config)
             # Convert sets to lists for JSON serialization
-            if "allowed_imports" in config_dict and isinstance(config_dict["allowed_imports"], set):
+            if "allowed_imports" in config_dict and isinstance(
+                config_dict["allowed_imports"], set
+            ):
                 config_dict["allowed_imports"] = list(config_dict["allowed_imports"])
         else:
             config_dict = dict(config)
@@ -243,12 +244,9 @@ class Container:
 
         # Spawn fresh Python process inside warm container
         # We pass the executor script via -c
-        # Note: In production, we might want to COPY the script into the image 
+        # Note: In production, we might want to COPY the script into the image
         # to avoid passing large args, but this works for now.
-        process_cmd = [
-            cmd, "exec", "-i", self._id,
-            "python", "-c", EXECUTOR_SCRIPT
-        ]
+        process_cmd = [cmd, "exec", "-i", self._id, "python", "-c", EXECUTOR_SCRIPT]
 
         try:
             proc = await asyncio.create_subprocess_exec(
@@ -260,13 +258,13 @@ class Container:
 
             stdout_bytes, stderr_bytes = await asyncio.wait_for(
                 proc.communicate(input=payload_json.encode("utf-8")),
-                timeout=config.timeout_seconds
+                timeout=config.timeout_seconds,
             )
-            
+
             if proc.returncode != 0:
                 stderr = stderr_bytes.decode()
                 # If execution failed at process level, container might be bad
-                # But usually it's just a script error. 
+                # But usually it's just a script error.
                 # We assume container is fine unless `podman exec` itself failed.
                 return SandboxResult(
                     stdout="",
@@ -274,7 +272,7 @@ class Container:
                     final_answer=None,
                     namespace_updates={},
                     resource_usage={},
-                    exit_code=proc.returncode or -1
+                    exit_code=proc.returncode or -1,
                 )
 
             # Parse result from stdout
@@ -283,13 +281,13 @@ class Container:
                 # The executor prints exactly one line of JSON
                 result_data = json.loads(output_str)
             except json.JSONDecodeError:
-                 return SandboxResult(
-                    stdout=output_str, # Maybe it printed something else
+                return SandboxResult(
+                    stdout=output_str,  # Maybe it printed something else
                     error="Failed to parse executor output",
                     final_answer=None,
                     namespace_updates={},
                     resource_usage={},
-                    exit_code=0
+                    exit_code=0,
                 )
 
             # Deserialize updates
@@ -307,22 +305,22 @@ class Container:
                 final_answer=result_data.get("final_answer"),
                 namespace_updates=updates,
                 resource_usage={},
-                exit_code=0
+                exit_code=0,
             )
 
         except asyncio.TimeoutError:
-             # Process hung, kill it
-             # Note: This checks `exec` process. We might want to `kill` the container if `exec` is stuck?
-             # For now, we assume destroying the exec is enough, or let HealthCheck kill the container later.
-             return SandboxResult(
-                 stdout="",
-                 error="Execution timed out",
-                 final_answer=None,
-                 namespace_updates={},
-                 resource_usage={},
-                 exit_code=-1,
-                 timed_out=True
-             )
+            # Process hung, kill it
+            # Note: This checks `exec` process. We might want to `kill` the container if `exec` is stuck?
+            # For now, we assume destroying the exec is enough, or let HealthCheck kill the container later.
+            return SandboxResult(
+                stdout="",
+                error="Execution timed out",
+                final_answer=None,
+                namespace_updates={},
+                resource_usage={},
+                exit_code=-1,
+                timed_out=True,
+            )
         except Exception as e:
             self._healthy = False  # Mark as potentially tainted if system error
             return SandboxResult(
@@ -331,24 +329,28 @@ class Container:
                 final_answer=None,
                 namespace_updates={},
                 resource_usage={},
-                exit_code=-1
+                exit_code=-1,
             )
 
     def is_healthy(self) -> bool:
         """Check if container is considered healthy by wrapper."""
-        return self._healthy 
+        return self._healthy
 
     async def check_health(self) -> bool:
         """Active health check (ping)."""
         if not self._healthy:
             return False
-            
+
         cmd = get_runtime_command(self._runtime)
         # Simple check: does exec echo work?
         proc = await asyncio.create_subprocess_exec(
-            cmd, "exec", self._id, "echo", "ok",
+            cmd,
+            "exec",
+            self._id,
+            "echo",
+            "ok",
             stdout=asyncio.subprocess.DEVNULL,
-            stderr=asyncio.subprocess.DEVNULL
+            stderr=asyncio.subprocess.DEVNULL,
         )
         await proc.wait()
         return proc.returncode == 0
@@ -362,8 +364,11 @@ class Container:
         cmd = get_runtime_command(self._runtime)
         # Using force remove
         proc = await asyncio.create_subprocess_exec(
-            cmd, "rm", "-f", self._id,
+            cmd,
+            "rm",
+            "-f",
+            self._id,
             stdout=asyncio.subprocess.DEVNULL,
-            stderr=asyncio.subprocess.DEVNULL
+            stderr=asyncio.subprocess.DEVNULL,
         )
         await proc.wait()

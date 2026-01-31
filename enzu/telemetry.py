@@ -1,4 +1,5 @@
 """Optional Logfire integration for tracing and logs."""
+
 from __future__ import annotations
 
 import os

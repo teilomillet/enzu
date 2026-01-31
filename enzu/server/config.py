@@ -7,6 +7,7 @@ Usage:
     settings = get_settings()
     print(settings.host, settings.port)
 """
+
 from functools import lru_cache
 from typing import Optional
 import os
@@ -30,7 +31,9 @@ class Settings:
         # Session management
         self.session_store: str = os.getenv("ENZU_SESSION_STORE", "memory")
         self.redis_url: Optional[str] = os.getenv("ENZU_REDIS_URL")
-        self.session_ttl_seconds: int = int(os.getenv("ENZU_SESSION_TTL_DEFAULT", "3600"))
+        self.session_ttl_seconds: int = int(
+            os.getenv("ENZU_SESSION_TTL_DEFAULT", "3600")
+        )
 
         # Audit logging
         self.audit_log_path: Optional[str] = os.getenv("ENZU_AUDIT_LOG_PATH")

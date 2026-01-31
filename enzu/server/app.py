@@ -9,6 +9,7 @@ Usage:
 Or run directly:
     uvicorn enzu.server:app --reload
 """
+
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
@@ -35,7 +36,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     setup_audit_logging()
     store = get_session_store()
     await store.start()
-    
+
     # Start TaskQueue for high-concurrency standalone tasks
     await get_task_queue()
 
@@ -77,7 +78,8 @@ def create_app() -> FastAPI:
                 error=ErrorDetail(
                     code=exc.code,
                     message=exc.message,
-                    request_id=exc.request_id or getattr(request.state, "request_id", None),
+                    request_id=exc.request_id
+                    or getattr(request.state, "request_id", None),
                 )
             ).model_dump(),
             headers={"X-Request-ID": getattr(request.state, "request_id", "unknown")},

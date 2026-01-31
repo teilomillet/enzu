@@ -15,6 +15,7 @@ Integration with scheduler.py:
     and CircuitBreaker for per-node failure protection.
 
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -30,14 +31,16 @@ logger = logging.getLogger(__name__)
 
 class CircuitState(Enum):
     """Circuit breaker states."""
-    CLOSED = "closed"      # Normal: requests flow through
-    OPEN = "open"          # Failing: requests rejected immediately
+
+    CLOSED = "closed"  # Normal: requests flow through
+    OPEN = "open"  # Failing: requests rejected immediately
     HALF_OPEN = "half_open"  # Recovery: testing with single request
 
 
 @dataclass
 class CircuitBreakerConfig:
     """Configuration for circuit breaker behavior."""
+
     # Failure threshold to trip breaker
     failure_threshold: int = 5
     # Seconds to wait before attempting recovery (OPEN -> HALF_OPEN)
@@ -51,6 +54,7 @@ class CircuitBreakerConfig:
 @dataclass
 class CircuitBreakerStats:
     """Statistics for a circuit breaker."""
+
     state: CircuitState
     failure_count: int
     success_count: int
@@ -238,6 +242,7 @@ class CircuitBreaker:
 
 class CircuitBreakerOpen(Exception):
     """Raised when request is rejected due to open circuit."""
+
     def __init__(self, node_id: str, message: Optional[str] = None):
         self.node_id = node_id
         super().__init__(message or f"Circuit breaker open for node {node_id}")
@@ -246,6 +251,7 @@ class CircuitBreakerOpen(Exception):
 @dataclass
 class HealthCheckResult:
     """Result of a health check."""
+
     node_id: str
     healthy: bool
     latency_ms: float
@@ -256,6 +262,7 @@ class HealthCheckResult:
 @dataclass
 class HealthCheckerConfig:
     """Configuration for health checker."""
+
     # Interval between health checks
     check_interval_seconds: float = 5.0
     # Timeout for individual health check
@@ -439,7 +446,9 @@ class HealthChecker:
                 self._history[node_id].append(result)
                 # Trim to max
                 if len(self._history[node_id]) > self._max_history:
-                    self._history[node_id] = self._history[node_id][-self._max_history:]
+                    self._history[node_id] = self._history[node_id][
+                        -self._max_history :
+                    ]
 
             if node_id not in self._failure_counts:
                 return
@@ -463,7 +472,10 @@ class HealthChecker:
                 self._failure_counts[node_id] += 1
 
                 if was_healthy:
-                    if self._failure_counts[node_id] >= self._config.unhealthy_threshold:
+                    if (
+                        self._failure_counts[node_id]
+                        >= self._config.unhealthy_threshold
+                    ):
                         self._node_healthy[node_id] = False
                         reason = result.error or "health_check_failed"
                         logger.warning("Node %s unhealthy: %s", node_id, reason)
@@ -499,6 +511,7 @@ class HealthChecker:
 @dataclass
 class RetryConfig:
     """Configuration for retry behavior."""
+
     # Maximum retry attempts
     max_retries: int = 3
     # Initial backoff delay in seconds
@@ -551,7 +564,7 @@ class RetryStrategy:
 
         # Exponential backoff
         delay = self._config.initial_backoff_seconds * (
-            self._config.backoff_multiplier ** attempt
+            self._config.backoff_multiplier**attempt
         )
 
         # Cap at maximum
@@ -606,7 +619,9 @@ class RetryStrategy:
                     return await func(*args, **kwargs)
                 else:
                     loop = asyncio.get_event_loop()
-                    return await loop.run_in_executor(None, lambda: func(*args, **kwargs))
+                    return await loop.run_in_executor(
+                        None, lambda: func(*args, **kwargs)
+                    )
 
             except Exception as e:
                 last_exception = e
@@ -631,6 +646,7 @@ class RetryStrategy:
 @dataclass
 class BackpressureSignal:
     """Signal for backpressure to callers."""
+
     # Should caller back off?
     should_backoff: bool
     # Suggested wait time in seconds
@@ -665,7 +681,9 @@ class BackpressureController:
         self._base_retry = base_retry_seconds
         self._max_retry = max_retry_seconds
 
-    def calculate_signal(self, load_factor: float, queue_depth: int) -> BackpressureSignal:
+    def calculate_signal(
+        self, load_factor: float, queue_depth: int
+    ) -> BackpressureSignal:
         """
         Calculate backpressure signal based on current load.
 
@@ -693,7 +711,9 @@ class BackpressureController:
             severity = (load_factor - self._warning_threshold) / (
                 self._critical_threshold - self._warning_threshold
             )
-            retry_after = self._base_retry + (self._max_retry - self._base_retry) * severity
+            retry_after = (
+                self._base_retry + (self._max_retry - self._base_retry) * severity
+            )
 
         return BackpressureSignal(
             should_backoff=True,

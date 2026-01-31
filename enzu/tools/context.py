@@ -10,6 +10,7 @@ The context store tracks:
 - Search queries performed (to avoid repeats)
 - Timestamps for freshness
 """
+
 from __future__ import annotations
 
 import json
@@ -21,9 +22,11 @@ from typing import Any, Dict, List, Optional
 
 from .. import telemetry
 
+
 @dataclass
 class Source:
     """A single source with metadata."""
+
     url: str
     title: str
     text: str
@@ -76,6 +79,7 @@ class ContextStore:
         # Save for later (actu.me persistence)
         ctx.save("research_session_123.json")
     """
+
     sources: List[Source] = field(default_factory=list)
     queries: List[str] = field(default_factory=list)
     topic: Optional[str] = None
@@ -118,14 +122,16 @@ class ContextStore:
             if url_hash not in seen:
                 raw_score = s.get("score")
                 safe_score = raw_score if isinstance(raw_score, (int, float)) else 0.0
-                self.sources.append(Source(
-                    url=url,
-                    title=s.get("title", ""),
-                    text=s.get("text", ""),
-                    score=safe_score,
-                    published_date=s.get("published_date"),
-                    query=query,
-                ))
+                self.sources.append(
+                    Source(
+                        url=url,
+                        title=s.get("title", ""),
+                        text=s.get("text", ""),
+                        score=safe_score,
+                        published_date=s.get("published_date"),
+                        query=query,
+                    )
+                )
                 seen.add(url_hash)
                 added += 1
 
@@ -170,7 +176,11 @@ class ContextStore:
 
         for s in sources:
             if s["text"]:
-                text = s["text"] if max_chars_per_source is None else s["text"][:max_chars_per_source]
+                text = (
+                    s["text"]
+                    if max_chars_per_source is None
+                    else s["text"][:max_chars_per_source]
+                )
             else:
                 text = ""
             published = s.get("published_date") or "unknown"
@@ -206,7 +216,9 @@ class ContextStore:
             "num_queries": len(self.queries),
             "total_text_chars": total_text,
             "search_cost_usd": self.search_cost_usd,
-            "avg_score": sum(s.score for s in self.sources) / len(self.sources) if self.sources else 0,
+            "avg_score": sum(s.score for s in self.sources) / len(self.sources)
+            if self.sources
+            else 0,
             "queries": self.queries,
         }
 

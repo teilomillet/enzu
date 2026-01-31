@@ -13,6 +13,7 @@ def is_retryable_status(exc: APIStatusError) -> bool:
 
 def with_retry(max_attempts=3, base_delay=1.0, max_delay=60.0):
     """Decorator for exponential backoff retry."""
+
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
@@ -28,9 +29,13 @@ def with_retry(max_attempts=3, base_delay=1.0, max_delay=60.0):
                     last_exception = e
 
                 if attempt < max_attempts - 1:
-                    delay = min(base_delay * (2 ** attempt) + random.uniform(0, 1), max_delay)
+                    delay = min(
+                        base_delay * (2**attempt) + random.uniform(0, 1), max_delay
+                    )
                     time.sleep(delay)
             assert last_exception is not None
             raise last_exception
+
         return wrapper
+
     return decorator
