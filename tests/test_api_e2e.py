@@ -9,14 +9,14 @@ from tests.providers.mock_provider import MockProvider
 def test_run_chat_mode() -> None:
     """Test the simple chat mode (no context)."""
     provider = MockProvider(main_outputs=["The answer is 42."])
-    
+
     result = run(
         "What is the answer?",
         model="mock-model",
         provider=provider,
         tokens=100,
     )
-    
+
     assert result == "The answer is 42."
 
 
@@ -24,7 +24,7 @@ def test_run_with_data_triggers_rlm() -> None:
     """Test that providing data triggers RLM mode automatically."""
     data_path = Path(__file__).parent / "fixtures" / "example1" / "context.txt"
     input_data = data_path.read_text(encoding="utf-8")
-    
+
     model_output = """
 ```python
 import re
@@ -40,7 +40,7 @@ FINAL(answer)
         "extract:doc_1": "Albert Einstein, 1921",
     }
     provider = MockProvider(main_outputs=[model_output], subcall_responses=subcalls)
-    
+
     # data present = RLM mode (no mode flag needed)
     result = run(
         "Find the scientist and year.",
@@ -50,7 +50,7 @@ FINAL(answer)
         tokens=200,
         contains=["Einstein"],
     )
-    
+
     assert "Einstein" in result
     assert "1921" in result
 
@@ -58,21 +58,21 @@ FINAL(answer)
 def test_run_with_limits_object() -> None:
     """Test using Limits object for complex constraints."""
     provider = MockProvider(main_outputs=["Response within limits."])
-    
+
     result = run(
         "Test query",
         model="mock-model",
         provider=provider,
         limits=Limits(tokens=500, seconds=60, cost=0.10),
     )
-    
+
     assert result == "Response within limits."
 
 
 def test_run_with_check_object() -> None:
     """Test using Check object for output verification."""
     provider = MockProvider(main_outputs=["The value is 123 units."])
-    
+
     result = run(
         "What is the value?",
         model="mock-model",
@@ -80,7 +80,7 @@ def test_run_with_check_object() -> None:
         tokens=100,
         check=Check(contains=["123"], matches=[r"\d+ units"]),
     )
-    
+
     assert "123" in result
 
 

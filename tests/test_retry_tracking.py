@@ -200,9 +200,15 @@ class TestCollectorRetryMetrics:
     def test_retry_reason_distribution(self):
         collector = RunMetricsCollector()
 
-        collector.observe(self.make_event(retries=2, retries_by_reason={"rate_limit": 2}))
+        collector.observe(
+            self.make_event(retries=2, retries_by_reason={"rate_limit": 2})
+        )
         collector.observe(self.make_event(retries=1, retries_by_reason={"timeout": 1}))
-        collector.observe(self.make_event(retries=3, retries_by_reason={"rate_limit": 2, "server_error": 1}))
+        collector.observe(
+            self.make_event(
+                retries=3, retries_by_reason={"rate_limit": 2, "server_error": 1}
+            )
+        )
 
         dist = collector.retry_reason_distribution()
         assert dist["rate_limit"] == 4
@@ -222,11 +228,13 @@ class TestCollectorRetryMetrics:
 
     def test_prometheus_includes_retry_metrics(self):
         collector = RunMetricsCollector()
-        collector.observe(self.make_event(
-            retries=2,
-            retries_by_reason={"rate_limit": 2},
-            budget_exceeded_during_retry=True,
-        ))
+        collector.observe(
+            self.make_event(
+                retries=2,
+                retries_by_reason={"rate_limit": 2},
+                budget_exceeded_during_retry=True,
+            )
+        )
 
         prom = collector.prometheus_format()
         assert 'enzu_retries_total{reason="rate_limit"}' in prom

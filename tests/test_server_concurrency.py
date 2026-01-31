@@ -9,6 +9,7 @@ Validates that the FastAPI server can handle 10+ concurrent users with:
 
 Uses mock LLM responses to test isolation without actual API calls.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -45,6 +46,7 @@ class IsolationTrackingProvider(BaseProvider):
     2. No cross-contamination between concurrent requests
     3. Session history is maintained correctly
     """
+
     name = "isolation_tracker"
 
     def __init__(self) -> None:
@@ -78,12 +80,14 @@ class IsolationTrackingProvider(BaseProvider):
 
             # Log the call
             with self._lock:
-                self._calls.append({
-                    "task_id": task.task_id,
-                    "input_preview": input_text[:100],
-                    "marker": marker,
-                    "timestamp": time.time(),
-                })
+                self._calls.append(
+                    {
+                        "task_id": task.task_id,
+                        "input_preview": input_text[:100],
+                        "marker": marker,
+                        "timestamp": time.time(),
+                    }
+                )
 
             # Return response that echoes the marker
             response_text = f"Response for {marker}: This is the answer containing {marker} for verification."
@@ -137,6 +141,7 @@ def get_mock_provider(*args, **kwargs) -> IsolationTrackingProvider:
 @dataclass
 class UserSimulation:
     """Simulates a user's session with multiple requests."""
+
     user_id: int
     session_id: Optional[str] = None
     marker: str = ""
@@ -152,6 +157,7 @@ class UserSimulation:
 @dataclass
 class ConcurrencyTestResult:
     """Results from concurrent user test."""
+
     total_users: int
     successful_users: int
     failed_users: int
@@ -163,25 +169,25 @@ class ConcurrencyTestResult:
 
     def to_report(self) -> str:
         return f"""
-{'='*66}
+{"=" * 66}
         HTTP SERVER CONCURRENCY TEST REPORT
-{'='*66}
+{"=" * 66}
  Total users: {self.total_users}
  Successful: {self.successful_users}
  Failed: {self.failed_users}
  Success rate: {self.successful_users / self.total_users:.1%}
-{'='*66}
+{"=" * 66}
  ISOLATION CHECK
-{'-'*66}
+{"-" * 66}
  Isolation violations: {self.isolation_violations}
  Cross-contamination cases: {len(self.cross_contamination_found)}
-{'='*66}
+{"=" * 66}
  PERFORMANCE
-{'-'*66}
+{"-" * 66}
  Peak concurrent requests: {self.peak_concurrent}
  Total requests processed: {self.total_requests}
  Total duration: {self.total_duration_ms:.1f}ms
-{'='*66}
+{"=" * 66}
 """
 
 
@@ -264,7 +270,9 @@ def run_user_session_sync(
                 )
 
                 if resp.status_code != 200:
-                    user.errors.append(f"Turn {turn + 1} failed: {resp.status_code} - {resp.text}")
+                    user.errors.append(
+                        f"Turn {turn + 1} failed: {resp.status_code} - {resp.text}"
+                    )
                     continue
 
                 answer = resp.json().get("answer", "")
@@ -313,7 +321,9 @@ async def run_user_session_async(
             )
 
             if resp.status_code != 200:
-                user.errors.append(f"Turn {turn + 1} failed: {resp.status_code} - {resp.text}")
+                user.errors.append(
+                    f"Turn {turn + 1} failed: {resp.status_code} - {resp.text}"
+                )
                 continue
 
             answer = resp.json().get("answer", "")
@@ -386,6 +396,7 @@ class TestServerConcurrency:
 
         # Make isinstance check work
         from enzu.models import ExecutionReport
+
         mock_report.__class__ = ExecutionReport
 
         mock_instance.run.return_value = mock_report
@@ -429,7 +440,9 @@ class TestServerConcurrency:
         resp = client.get(f"/v1/sessions/{session_id}")
         assert resp.status_code == 404
 
-    @pytest.mark.skip(reason="Multiprocessing tests can't use mocking - use test_10_concurrent_users_async instead")
+    @pytest.mark.skip(
+        reason="Multiprocessing tests can't use mocking - use test_10_concurrent_users_async instead"
+    )
     def test_10_concurrent_users_with_sessions(self, app, mock_provider):
         """
         Test 10 concurrent users, each with their own session.
@@ -463,6 +476,7 @@ class TestServerConcurrency:
             return_report = kwargs.get("return_report", False)
 
             from enzu.models import ExecutionReport, BudgetUsage, VerificationResult
+
             report = ExecutionReport(
                 success=True,
                 task_id="test-task",
@@ -493,11 +507,10 @@ class TestServerConcurrency:
 
         # Run all users concurrently using async
         transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test", timeout=30.0) as client:
-            tasks = [
-                run_user_session_async(user, client, num_turns)
-                for user in users
-            ]
+        async with AsyncClient(
+            transport=transport, base_url="http://test", timeout=30.0
+        ) as client:
+            tasks = [run_user_session_async(user, client, num_turns) for user in users]
             users = await asyncio.gather(*tasks)
 
         total_duration_ms = (time.time() - start_time) * 1000
@@ -526,16 +539,19 @@ class TestServerConcurrency:
             print(f"User {user.user_id} errors: {user.errors}")
 
         # Assertions
-        assert len(successful) >= num_users * 0.9, \
+        assert len(successful) >= num_users * 0.9, (
             f"Expected at least 90% success, got {len(successful)}/{num_users}"
+        )
 
-        assert isolation_violations == 0, \
+        assert isolation_violations == 0, (
             f"Found {isolation_violations} isolation violations"
+        )
 
-        assert len(contaminations) == 0, \
-            f"Found cross-contamination: {contaminations}"
+        assert len(contaminations) == 0, f"Found cross-contamination: {contaminations}"
 
-    @pytest.mark.skip(reason="Multiprocessing tests can't use mocking - session locking tested via async test")
+    @pytest.mark.skip(
+        reason="Multiprocessing tests can't use mocking - session locking tested via async test"
+    )
     @patch("enzu.server.services.enzu_service.Enzu")
     def test_session_locking_prevents_race(self, mock_enzu_class, app):
         """
@@ -563,6 +579,7 @@ class TestServerConcurrency:
             mock_report.budget_usage.cost_usd = 0.001
 
             from enzu.models import ExecutionReport
+
             mock_report.__class__ = ExecutionReport
             return mock_report
 
@@ -578,7 +595,7 @@ class TestServerConcurrency:
         import socket
 
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.bind(('', 0))
+            s.bind(("", 0))
             port = s.getsockname()[1]
 
         def run_server():
@@ -590,6 +607,7 @@ class TestServerConcurrency:
 
         try:
             import httpx
+
             base_url = f"http://127.0.0.1:{port}"
 
             with httpx.Client(base_url=base_url, timeout=10.0) as client:
@@ -622,15 +640,17 @@ class TestServerConcurrency:
                 # Either both succeed (sequential execution due to lock)
                 # or one gets 409 (conflict due to lock)
                 valid_outcomes = (
-                    status_codes == [200, 200] or
-                    200 in status_codes and 409 in status_codes
+                    status_codes == [200, 200]
+                    or 200 in status_codes
+                    and 409 in status_codes
                 )
 
                 print(f"Results: {results}")
                 print(f"Errors: {errors}")
 
-                assert valid_outcomes or len(errors) > 0, \
+                assert valid_outcomes or len(errors) > 0, (
                     f"Unexpected results: {results}, errors: {errors}"
+                )
 
         finally:
             server_process.terminate()
@@ -663,6 +683,7 @@ class TestStatelessRun:
         mock_report.budget_usage.cost_usd = 0.001
 
         from enzu.models import ExecutionReport
+
         mock_report.__class__ = ExecutionReport
 
         mock_instance = MagicMock()
@@ -680,7 +701,9 @@ class TestStatelessRun:
         assert "answer" in data
         assert "request_id" in data
 
-    @pytest.mark.skip(reason="Multiprocessing tests can't use mocking - use async tests instead")
+    @pytest.mark.skip(
+        reason="Multiprocessing tests can't use mocking - use async tests instead"
+    )
     @patch("enzu.server.services.enzu_service.Enzu")
     def test_concurrent_run_requests(self, mock_enzu_class, app):
         """Multiple concurrent run requests are handled correctly."""
@@ -710,6 +733,7 @@ class TestStatelessRun:
             mock_report.budget_usage.cost_usd = 0.001
 
             from enzu.models import ExecutionReport
+
             mock_report.__class__ = ExecutionReport
             return mock_report
 
@@ -724,7 +748,7 @@ class TestStatelessRun:
         import socket
 
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.bind(('', 0))
+            s.bind(("", 0))
             port = s.getsockname()[1]
 
         def run_server():
@@ -736,6 +760,7 @@ class TestStatelessRun:
 
         try:
             import httpx
+
             base_url = f"http://127.0.0.1:{port}"
 
             num_requests = 10
@@ -748,7 +773,11 @@ class TestStatelessRun:
                         "/v1/run",
                         json={"task": f"Process {marker}"},
                     )
-                    return (marker, resp.status_code, resp.json() if resp.status_code == 200 else None)
+                    return (
+                        marker,
+                        resp.status_code,
+                        resp.json() if resp.status_code == 200 else None,
+                    )
 
             with ThreadPoolExecutor(max_workers=num_requests) as executor:
                 futures = [executor.submit(send_run, m) for m in markers]
@@ -761,8 +790,9 @@ class TestStatelessRun:
             # Each response should contain its own marker
             for marker, status, data in results:
                 if data:
-                    assert marker in data["answer"], \
+                    assert marker in data["answer"], (
                         f"Response for {marker} doesn't contain marker: {data['answer']}"
+                    )
 
         finally:
             server_process.terminate()
@@ -774,7 +804,9 @@ class TestStatelessRun:
 # =============================================================================
 
 
-@pytest.mark.skip(reason="Multiprocessing tests can't use mocking - use test_10_concurrent_users_async instead")
+@pytest.mark.skip(
+    reason="Multiprocessing tests can't use mocking - use test_10_concurrent_users_async instead"
+)
 def test_10_concurrent_users_sync():
     """
     Synchronous test that can run without pytest-anyio.
@@ -810,6 +842,7 @@ def test_10_concurrent_users_sync():
         mock_report.budget_usage.cost_usd = 0.001
 
         from enzu.models import ExecutionReport
+
         mock_report.__class__ = ExecutionReport
         return mock_report
 
@@ -826,7 +859,7 @@ def test_10_concurrent_users_sync():
         import socket
 
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.bind(('', 0))
+            s.bind(("", 0))
             port = s.getsockname()[1]
 
         def run_server():
@@ -859,15 +892,15 @@ def test_10_concurrent_users_sync():
             contaminations = check_cross_contamination(users)
 
             print(f"""
-{'='*66}
+{"=" * 66}
         SYNC CONCURRENT TEST RESULTS
-{'='*66}
+{"=" * 66}
  Total users: {num_users}
  Successful: {len(successful)}
  Failed: {len(failed)}
  Cross-contamination: {len(contaminations)}
  Total duration: {total_duration_ms:.1f}ms
-{'='*66}
+{"=" * 66}
 """)
 
             for user in failed:

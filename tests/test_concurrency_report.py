@@ -18,6 +18,7 @@ Usage:
     ENZU_CONCURRENCY_SCALE=20 pytest tests/test_concurrency_report.py -v --timeout=120
 
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -49,6 +50,7 @@ from enzu.engine import Engine
 # =============================================================================
 # CONFIGURATION
 # =============================================================================
+
 
 def get_scale() -> int:
     """Get test scale from environment (default: 5, supports 5, 10, 20)."""
@@ -84,9 +86,11 @@ def get_stagger_delays(scale: int) -> List[float]:
 # DATA CLASSES (Ray-Inspired Design)
 # =============================================================================
 
+
 @dataclass
 class InstanceResult:
     """Result from a single report generation instance."""
+
     instance_id: int
     correlation_marker: str
     success: bool
@@ -108,6 +112,7 @@ class InstanceResult:
 @dataclass
 class ConcurrencyMetrics:
     """Metrics collected during test run."""
+
     # Timing
     total_duration_ms: float
     instance_durations_ms: List[float]
@@ -115,7 +120,7 @@ class ConcurrencyMetrics:
 
     # Correctness
     isolation_violations: int  # Cross-contamination detected
-    state_corruptions: int     # Shared state leaks
+    state_corruptions: int  # Shared state leaks
 
     # Resources
     peak_concurrent_requests: int
@@ -136,39 +141,40 @@ class ConcurrencyMetrics:
     def to_report(self) -> str:
         """Generate formatted report."""
         return f"""
-{'='*66}
+{"=" * 66}
               CONCURRENCY TEST REPORT
-{'='*66}
+{"=" * 66}
  Total instances: {self.total_instances}
  Successful: {self.successful_instances}
  Failed: {self.failed_instances}
  Success rate: {self.success_rate():.1%}
  Peak concurrent: {self.peak_concurrent_requests}
-{'='*66}
+{"=" * 66}
  ISOLATION CHECK
-{'-'*66}
+{"-" * 66}
  Isolation violations: {self.isolation_violations}
  State corruptions: {self.state_corruptions}
-{'='*66}
+{"=" * 66}
  TIMING
-{'-'*66}
+{"-" * 66}
  Total duration: {self.total_duration_ms:.1f}ms
  Avg instance duration: {sum(self.instance_durations_ms) / len(self.instance_durations_ms) if self.instance_durations_ms else 0:.1f}ms
  Min instance duration: {min(self.instance_durations_ms) if self.instance_durations_ms else 0:.1f}ms
  Max instance duration: {max(self.instance_durations_ms) if self.instance_durations_ms else 0:.1f}ms
-{'='*66}
+{"=" * 66}
  RESOURCES
-{'-'*66}
+{"-" * 66}
  Connection pool size: {self.connection_pool_size}
  Total API calls: {self.api_calls_total}
  API errors: {self.api_errors}
-{'='*66}
+{"=" * 66}
 """
 
 
 # =============================================================================
 # MOCK PROVIDER FOR TESTING
 # =============================================================================
+
 
 class ConcurrencyMockProvider(BaseProvider):
     """
@@ -180,6 +186,7 @@ class ConcurrencyMockProvider(BaseProvider):
     - Thread-safe call tracking
     - Configurable failure rate
     """
+
     name = "concurrency_mock"
 
     def __init__(
@@ -231,12 +238,14 @@ class ConcurrencyMockProvider(BaseProvider):
 
             # Track call
             with self._lock:
-                self._calls.append({
-                    "task_id": task.task_id,
-                    "instance_id": instance_id,
-                    "correlation_marker": correlation_marker,
-                    "timestamp": time.time(),
-                })
+                self._calls.append(
+                    {
+                        "task_id": task.task_id,
+                        "instance_id": instance_id,
+                        "correlation_marker": correlation_marker,
+                        "timestamp": time.time(),
+                    }
+                )
 
             return ProviderResult(
                 output_text=output_text,
@@ -272,6 +281,7 @@ class ConcurrencyMockProvider(BaseProvider):
 # STAGGERED SCHEDULER (Ray-Inspired)
 # =============================================================================
 
+
 @dataclass
 class StaggeredScheduler:
     """
@@ -280,6 +290,7 @@ class StaggeredScheduler:
     Submits tasks at scheduled delays to simulate realistic load patterns
     where requests arrive at different times.
     """
+
     delays: List[float] = field(default_factory=lambda: [0, 2, 3, 5, 7])
 
     async def run(
@@ -327,7 +338,10 @@ class StaggeredScheduler:
                     active_count[0] -= 1
                     # Update last overlap window end time
                     if overlap_windows and overlap_windows[-1][1] == -1:
-                        overlap_windows[-1] = (overlap_windows[-1][0], time.time() - start)
+                        overlap_windows[-1] = (
+                            overlap_windows[-1][0],
+                            time.time() - start,
+                        )
 
         # Submit all tasks with their scheduled delays
         for i, delay in enumerate(self.delays):
@@ -346,17 +360,19 @@ class StaggeredScheduler:
         for i, r in enumerate(results):
             if isinstance(r, BaseException):
                 api_errors += 1
-                instance_results.append(InstanceResult(
-                    instance_id=i + 1,
-                    correlation_marker="",
-                    success=False,
-                    output_text=None,
-                    input_data="",
-                    start_time=0,
-                    end_time=0,
-                    duration_ms=0,
-                    error=str(r),
-                ))
+                instance_results.append(
+                    InstanceResult(
+                        instance_id=i + 1,
+                        correlation_marker="",
+                        success=False,
+                        output_text=None,
+                        input_data="",
+                        start_time=0,
+                        end_time=0,
+                        duration_ms=0,
+                        error=str(r),
+                    )
+                )
             else:
                 instance_results.append(r)
 
@@ -369,7 +385,7 @@ class StaggeredScheduler:
             instance_durations_ms=[r.duration_ms for r in instance_results],
             overlap_windows=overlap_windows,
             isolation_violations=0,  # Calculated later
-            state_corruptions=0,     # Calculated later
+            state_corruptions=0,  # Calculated later
             peak_concurrent_requests=peak_concurrent[0],
             connection_pool_size=1,  # Updated in tests
             api_calls_total=len(instance_results),
@@ -385,6 +401,7 @@ class StaggeredScheduler:
 # =============================================================================
 # REPORT INSTANCE (Ray Actor Pattern)
 # =============================================================================
+
 
 class ReportInstance:
     """
@@ -424,14 +441,18 @@ class ReportInstance:
 
     def _generate_context_data(self) -> Dict[str, Any]:
         """Generate unique context data for this instance."""
-        template = self.CONTEXT_TEMPLATES[self.instance_id % len(self.CONTEXT_TEMPLATES)]
+        template = self.CONTEXT_TEMPLATES[
+            self.instance_id % len(self.CONTEXT_TEMPLATES)
+        ]
 
         # Generate unique metrics for this instance
         metrics = {}
         for metric in template["metrics"]:
             # Use instance_id to seed deterministic but unique values
             value = ((self.instance_id * 17 + hash(metric)) % 1000) / 10
-            trend = template["trends"][(self.instance_id + hash(metric)) % len(template["trends"])]
+            trend = template["trends"][
+                (self.instance_id + hash(metric)) % len(template["trends"])
+            ]
             metrics[metric] = {"value": value, "trend": trend}
 
         return {
@@ -537,7 +558,7 @@ class ReportInstance:
             "METRICS:",
         ]
 
-        for metric, info in data['metrics'].items():
+        for metric, info in data["metrics"].items():
             lines.append(f"  - {metric}: {info['value']:.1f} ({info['trend']})")
 
         lines.append("")
@@ -553,6 +574,7 @@ class ReportInstance:
 # =============================================================================
 # TEST FIXTURES
 # =============================================================================
+
 
 @pytest.fixture
 def mock_provider():
@@ -572,6 +594,7 @@ def reset_concurrency_state():
 # =============================================================================
 # TEST CASES
 # =============================================================================
+
 
 class TestStaggeredSubmission:
     """Test that instances start at correct times."""
@@ -612,14 +635,17 @@ class TestStaggeredSubmission:
 
         print(f"\nStaggered Submission Test (scale={scale}):")
         print(f"  Expected delays: {delays[:5]}{'...' if len(delays) > 5 else ''}")
-        print(f"  Actual delays: {[f'{d:.2f}' for d in actual_delays[:5]]}{'...' if len(actual_delays) > 5 else ''}")
+        print(
+            f"  Actual delays: {[f'{d:.2f}' for d in actual_delays[:5]]}{'...' if len(actual_delays) > 5 else ''}"
+        )
 
         # Check each delay is within tolerance
         tolerance_ms = 200  # 200ms tolerance for async scheduling
         for i, (expected, actual) in enumerate(zip(delays, actual_delays)):
             diff = abs(expected - actual)
-            assert diff < tolerance_ms / 1000, \
-                f"Instance {i+1} started {diff*1000:.0f}ms from schedule (expected {expected}s, got {actual:.2f}s)"
+            assert diff < tolerance_ms / 1000, (
+                f"Instance {i + 1} started {diff * 1000:.0f}ms from schedule (expected {expected}s, got {actual:.2f}s)"
+            )
 
         assert len(results) == scale
         print(f"  All {scale} instances started within {tolerance_ms}ms of schedule")
@@ -640,8 +666,7 @@ class TestResponseIsolation:
 
         # Create instances with unique data
         instances = [
-            ReportInstance(i + 1, f"dataset-[{i + 1:03d}]")
-            for i in range(scale)
+            ReportInstance(i + 1, f"dataset-[{i + 1:03d}]") for i in range(scale)
         ]
 
         async def run_instance(instance_id: int) -> InstanceResult:
@@ -676,8 +701,9 @@ class TestResponseIsolation:
         print(f"  Isolation violations: {isolation_violations}")
         print(f"  Peak concurrent: {mock_provider.peak_concurrent}")
 
-        assert isolation_violations == 0, \
+        assert isolation_violations == 0, (
             f"Found {isolation_violations} isolation violations"
+        )
 
         print(f"  All {scale} instances properly isolated")
 
@@ -698,8 +724,7 @@ class TestStateCorruption:
         # Each instance processes different data
         # Use zero-padded format to prevent substring collisions (e.g., data-1 in data-10)
         instances = [
-            ReportInstance(i + 1, f"unique-data-[{i + 1:03d}]")
-            for i in range(scale)
+            ReportInstance(i + 1, f"unique-data-[{i + 1:03d}]") for i in range(scale)
         ]
 
         async def run_instance(instance_id: int) -> InstanceResult:
@@ -734,8 +759,9 @@ class TestStateCorruption:
         print(f"  Total instances: {len(results)}")
         print(f"  State corruptions: {state_corruptions}")
 
-        assert state_corruptions == 0, \
+        assert state_corruptions == 0, (
             f"Found {state_corruptions} state corruption cases"
+        )
 
         print(f"  All {scale} instances maintained correct state")
 
@@ -760,8 +786,7 @@ class TestConnectionPooling:
         scheduler = StaggeredScheduler(delays=delays)
 
         instances = [
-            ReportInstance(i + 1, f"pool-test-[{i + 1:03d}]")
-            for i in range(scale)
+            ReportInstance(i + 1, f"pool-test-[{i + 1:03d}]") for i in range(scale)
         ]
 
         async def run_instance(instance_id: int) -> InstanceResult:
@@ -783,8 +808,9 @@ class TestConnectionPooling:
         print(f"  Limiter total acquired: {limiter_stats.total_acquired}")
 
         successful = [r for r in results if r.success]
-        assert len(successful) >= scale * 0.95, \
+        assert len(successful) >= scale * 0.95, (
             f"Only {len(successful)}/{scale} requests succeeded"
+        )
 
         print(f"  Pool handled {scale} concurrent requests successfully")
 
@@ -803,8 +829,7 @@ class TestConcurrentAPICalls:
         scheduler = StaggeredScheduler(delays=delays)
 
         instances = [
-            ReportInstance(i + 1, f"api-test-[{i + 1:03d}]")
-            for i in range(scale)
+            ReportInstance(i + 1, f"api-test-[{i + 1:03d}]") for i in range(scale)
         ]
 
         async def run_instance(instance_id: int) -> InstanceResult:
@@ -831,11 +856,13 @@ class TestConcurrentAPICalls:
         print(f"  Provider calls recorded: {len(calls)}")
         print(f"  Unique instance IDs in calls: {len(set(call_instance_ids))}")
 
-        assert marker_mismatches == 0, \
+        assert marker_mismatches == 0, (
             f"Found {marker_mismatches} correlation marker mismatches"
+        )
 
-        assert len(set(call_instance_ids)) == scale, \
+        assert len(set(call_instance_ids)) == scale, (
             f"Expected {scale} unique instance IDs, got {len(set(call_instance_ids))}"
+        )
 
         print(f"  All {scale} API calls correctly correlated")
 
@@ -866,8 +893,7 @@ class TestGracefulDegradation:
         scheduler = StaggeredScheduler(delays=fast_delays)
 
         instances = [
-            ReportInstance(i + 1, f"stress-test-[{i + 1:03d}]")
-            for i in range(scale)
+            ReportInstance(i + 1, f"stress-test-[{i + 1:03d}]") for i in range(scale)
         ]
 
         async def run_instance(instance_id: int) -> InstanceResult:
@@ -898,8 +924,9 @@ class TestGracefulDegradation:
         success_rate = len(successful) / scale
         print(f"  Success rate: {success_rate:.1%}")
 
-        assert success_rate >= 0.4, \
+        assert success_rate >= 0.4, (
             f"Success rate {success_rate:.1%} too low under load"
+        )
 
         print("  System handled degradation gracefully")
 
@@ -921,11 +948,11 @@ class TestFullPipeline:
         scale = get_scale()
         delays = get_stagger_delays(scale)
 
-        print(f"\n{'='*66}")
+        print(f"\n{'=' * 66}")
         print("  FULL CONCURRENCY PIPELINE TEST")
         print(f"  Scale: {scale} instances")
         print(f"  Delays: {delays[:5]}{'...' if len(delays) > 5 else ''}")
-        print(f"{'='*66}")
+        print(f"{'=' * 66}")
 
         # Configure for scale
         max_concurrent = max(50, scale * 2)
@@ -980,31 +1007,34 @@ class TestFullPipeline:
         print(metrics.to_report())
 
         # Assertions
-        assert metrics.success_rate() >= 0.95, \
+        assert metrics.success_rate() >= 0.95, (
             f"Success rate {metrics.success_rate():.1%} below 95%"
+        )
 
-        assert metrics.isolation_violations == 0, \
+        assert metrics.isolation_violations == 0, (
             f"Found {metrics.isolation_violations} isolation violations"
+        )
 
-        assert metrics.state_corruptions == 0, \
+        assert metrics.state_corruptions == 0, (
             f"Found {metrics.state_corruptions} state corruptions"
+        )
 
         print(f"CERTIFICATION PASSED: {scale} instances processed correctly")
-        print(f"{'='*66}\n")
+        print(f"{'=' * 66}\n")
 
 
 # =============================================================================
 # PYTEST CONFIGURATION
 # =============================================================================
 
+
 def pytest_configure(config):
     """Register custom markers."""
-    config.addinivalue_line(
-        "markers", "concurrency: marks test as concurrency test"
-    )
+    config.addinivalue_line("markers", "concurrency: marks test as concurrency test")
 
 
 if __name__ == "__main__":
     # Allow running directly for quick testing
     import sys
+
     pytest.main([__file__, "-v", "--tb=short"] + sys.argv[1:])

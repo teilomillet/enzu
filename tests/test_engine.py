@@ -9,6 +9,7 @@ Tests cover:
 5. Error handling
 6. Budget usage calculation
 """
+
 from __future__ import annotations
 
 from typing import Dict, List, Optional
@@ -32,8 +33,10 @@ from tests.providers.mock_provider import MockProvider
 # Test Fixtures and Helpers
 # =============================================================================
 
+
 class FailingProvider(BaseProvider):
     """Provider that always raises an exception."""
+
     name = "failing"
 
     def __init__(self, error_message: str = "Provider failed"):
@@ -48,6 +51,7 @@ class FailingProvider(BaseProvider):
 
 class DelayedFailingProvider(BaseProvider):
     """Provider that fails after N calls."""
+
     name = "delayed_failing"
 
     def __init__(self, fail_after: int = 1, error_message: str = "Delayed failure"):
@@ -73,6 +77,7 @@ class DelayedFailingProvider(BaseProvider):
 
 class TrackingProvider(BaseProvider):
     """Provider that tracks all calls made to it."""
+
     name = "tracking"
 
     def __init__(self, responses: List[str], usage: Optional[Dict] = None):
@@ -97,6 +102,7 @@ class TrackingProvider(BaseProvider):
 
 class UsageMissingProvider(BaseProvider):
     """Provider that returns usage without total token counts."""
+
     name = "usage_missing"
 
     def __init__(self, output_text: str) -> None:
@@ -113,6 +119,7 @@ class UsageMissingProvider(BaseProvider):
 
     def stream(self, task: TaskSpec, on_progress=None) -> ProviderResult:
         return self.generate(task)
+
 
 def _make_task(
     task_id: str = "test",
@@ -155,6 +162,7 @@ def _make_task(
 # =============================================================================
 # Provider Fallback Tests
 # =============================================================================
+
 
 class TestProviderFallback:
     """Test provider fallback system."""
@@ -230,9 +238,10 @@ class TestProviderFallback:
         task = _make_task()
         engine = Engine()
         engine.run(
-            task, provider1,
+            task,
+            provider1,
             fallback_providers=[provider2],
-            on_progress=lambda e: events.append(e)
+            on_progress=lambda e: events.append(e),
         )
 
         # Should have fallback event
@@ -270,6 +279,7 @@ class TestProviderFallback:
 # =============================================================================
 # Progress Event Tests
 # =============================================================================
+
 
 class TestProgressEvents:
     """Test progress event streaming."""
@@ -362,7 +372,9 @@ class TestProgressEvents:
         assert "task_started" in messages
         assert "task_completed" in messages
 
-    def test_progress_events_logged_when_stream_enabled(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_progress_events_logged_when_stream_enabled(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Progress events should be logged when telemetry streaming is enabled."""
         provider = MockProvider(main_outputs=["Test"])
         logged: list[tuple[str, str, Dict[str, object]]] = []
@@ -379,7 +391,9 @@ class TestProgressEvents:
 
         assert any(event == "progress_event" for _, event, _ in logged)
 
-    def test_progress_events_logged_when_env_enabled(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_progress_events_logged_when_env_enabled(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Progress events should be logged when ENZU_LOGFIRE_PROGRESS is set."""
         provider = MockProvider(main_outputs=["Test"])
         logged: list[tuple[str, str, Dict[str, object]]] = []
@@ -402,6 +416,7 @@ class TestProgressEvents:
 # Budget Enforcement Tests
 # =============================================================================
 
+
 class TestBudgetEnforcement:
     """Test budget enforcement and clamping."""
 
@@ -419,7 +434,9 @@ class TestBudgetEnforcement:
         assert report.success is False
         assert any("exceeds budget" in err for err in report.errors)
 
-    def test_total_tokens_exhausted_preflight(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_total_tokens_exhausted_preflight(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Preflight should fail when input tokens exceed max_total_tokens."""
         provider = MockProvider(main_outputs=["Test"])
         events: List[ProgressEvent] = []
@@ -439,10 +456,15 @@ class TestBudgetEnforcement:
         report = engine.run(task, provider, on_progress=lambda e: events.append(e))
 
         assert report.success is False
-        assert any("budget.max_total_tokens exhausted in preflight" in err for err in report.errors)
+        assert any(
+            "budget.max_total_tokens exhausted in preflight" in err
+            for err in report.errors
+        )
         assert any(e.message == "budget_limit_exceeded_preflight" for e in events)
 
-    def test_output_clamped_with_exact_tokens(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_output_clamped_with_exact_tokens(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Clamp output when exact token count leaves limited remaining budget."""
         provider = TrackingProvider(responses=["Test output"])
         events: List[ProgressEvent] = []
@@ -465,7 +487,9 @@ class TestBudgetEnforcement:
         assert any(e.message == "budget_output_clamped" for e in events)
         assert report.success is True
 
-    def test_budget_seconds_exceeded_marks_failure(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_budget_seconds_exceeded_marks_failure(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Elapsed time over max_seconds should fail the run."""
         provider = MockProvider(main_outputs=["ok"])
 
@@ -525,7 +549,9 @@ class TestBudgetEnforcement:
         # May or may not be clamped depending on input token count
         # The important thing is the mechanism works without error
 
-    def test_tokenizer_unavailable_emits_degraded_event(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_tokenizer_unavailable_emits_degraded_event(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Tokenizer-unavailable branch should emit degraded budget event."""
         provider = MockProvider(main_outputs=["Test"])
         events: List[ProgressEvent] = []
@@ -548,7 +574,9 @@ class TestBudgetEnforcement:
         assert "tokenizer_unavailable_budget_degraded" in messages
         assert report.success is True
 
-    def test_tokenizer_unavailable_clamps_to_total_budget(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_tokenizer_unavailable_clamps_to_total_budget(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Tokenizer-unavailable path should still clamp output to total budget."""
         provider = TrackingProvider(responses=["Test output"])
         events: List[ProgressEvent] = []
@@ -572,7 +600,9 @@ class TestBudgetEnforcement:
         assert "tokenizer_unavailable_budget_degraded" in [e.message for e in events]
         assert report.success is True
 
-    def test_default_output_tokens_from_total_budget(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_default_output_tokens_from_total_budget(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """When max_output_tokens is None, default to budget max_total_tokens."""
         provider = TrackingProvider(responses=["Test output"])
 
@@ -593,7 +623,9 @@ class TestBudgetEnforcement:
         assert provider.calls[0].max_output_tokens == 50
         assert report.success is True
 
-    def test_usage_missing_total_tokens_emits_event(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_usage_missing_total_tokens_emits_event(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Emit usage_missing_total_tokens when totals cannot be computed."""
         provider = UsageMissingProvider("ok")
         events: List[ProgressEvent] = []
@@ -643,6 +675,7 @@ class TestBudgetEnforcement:
 # =============================================================================
 # Trajectory Recording Tests
 # =============================================================================
+
 
 class TestTrajectoryRecording:
     """Test trajectory recording."""
@@ -707,6 +740,7 @@ class TestTrajectoryRecording:
 # Verification Integration Tests
 # =============================================================================
 
+
 class TestVerificationIntegration:
     """Test verification integrated with engine run."""
 
@@ -748,6 +782,7 @@ class TestVerificationIntegration:
 # =============================================================================
 # Budget Usage Calculation Tests
 # =============================================================================
+
 
 class TestBudgetUsageCalculation:
     """Test budget usage calculation."""
@@ -801,6 +836,7 @@ class TestBudgetUsageCalculation:
 # Edge Cases
 # =============================================================================
 
+
 class TestEngineEdgeCases:
     """Test edge cases and boundary conditions."""
 
@@ -838,7 +874,7 @@ class TestEngineEdgeCases:
 
     def test_unicode_output(self) -> None:
         """Should handle unicode output."""
-        unicode_output = "Hello \U0001F600 \u4e2d\u6587 caf\u00e9"
+        unicode_output = "Hello \U0001f600 \u4e2d\u6587 caf\u00e9"
         provider = MockProvider(main_outputs=[unicode_output])
 
         task = _make_task()
@@ -846,7 +882,7 @@ class TestEngineEdgeCases:
         report = engine.run(task, provider)
 
         assert report.success is True
-        assert report.output_text is not None and "\U0001F600" in report.output_text
+        assert report.output_text is not None and "\U0001f600" in report.output_text
 
     def test_whitespace_only_output_fails(self) -> None:
         """Whitespace-only output should fail verification."""
@@ -864,6 +900,7 @@ class TestEngineEdgeCases:
 # Helper Method Tests
 # =============================================================================
 
+
 class TestEngineHelpers:
     """Test engine helper methods via shared usage.py functions."""
 
@@ -872,6 +909,7 @@ class TestEngineHelpers:
         # These functions were moved to usage.py as part of modularity refactor.
         # Engine now uses normalize_usage() which delegates to these.
         from enzu.usage import _read_int
+
         usage = {"output_tokens": 100, "other": "string"}
         result = _read_int(usage, ("missing", "output_tokens"))
         assert result == 100
@@ -879,6 +917,7 @@ class TestEngineHelpers:
     def test_read_int_returns_none_when_missing(self) -> None:
         """_read_int should return None when key missing."""
         from enzu.usage import _read_int
+
         usage = {"other": 100}
         result = _read_int(usage, ("missing",))
         assert result is None
@@ -886,6 +925,7 @@ class TestEngineHelpers:
     def test_read_float_finds_value(self) -> None:
         """_read_float should find float value."""
         from enzu.usage import _read_float
+
         usage = {"cost_usd": 0.05}
         result = _read_float(usage, ("cost_usd",))
         assert result == 0.05
@@ -893,6 +933,7 @@ class TestEngineHelpers:
     def test_read_float_converts_int(self) -> None:
         """_read_float should convert int to float."""
         from enzu.usage import _read_float
+
         usage = {"cost": 5}
         result = _read_float(usage, ("cost",))
         assert result == 5.0
@@ -901,6 +942,7 @@ class TestEngineHelpers:
     def test_read_float_returns_none_when_missing(self) -> None:
         """_read_float should return None when key missing."""
         from enzu.usage import _read_float
+
         usage = {}
         result = _read_float(usage, ("missing",))
         assert result is None

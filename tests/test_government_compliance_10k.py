@@ -45,6 +45,7 @@ Each test produces explicit metrics that can be included in compliance reports:
 - Audit log completeness percentage
 
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -92,11 +93,14 @@ from enzu.isolation.audit import (
 
 # Set to True to run full 10K tests (slower but complete certification)
 # Set to False for faster development testing
-FULL_CERTIFICATION_MODE = os.environ.get("ENZU_FULL_CERTIFICATION", "false").lower() == "true"
+FULL_CERTIFICATION_MODE = (
+    os.environ.get("ENZU_FULL_CERTIFICATION", "false").lower() == "true"
+)
 
 # Scale factors for different test modes
 SCALE_FULL = 10000  # Full 10K certification
-SCALE_FAST = 1000   # Fast development testing
+SCALE_FAST = 1000  # Fast development testing
+
 
 def get_scale() -> int:
     """Get test scale based on mode."""
@@ -106,6 +110,7 @@ def get_scale() -> int:
 @dataclass
 class CertificationResult:
     """Result of a certification test with explicit metrics."""
+
     test_name: str
     passed: bool
     total_requests: int
@@ -141,6 +146,7 @@ Additional Metrics:
 # =============================================================================
 # CERTIFICATION 1: 10K CONCURRENT CAPACITY
 # =============================================================================
+
 
 class Test10KCapacity:
     """
@@ -229,6 +235,7 @@ class Test10KCapacity:
                 async def exec_fn(task: Dict[str, Any]) -> str:
                     task["_assigned_node"] = nid
                     return await mock_executor(task)
+
                 return exec_fn
 
             coordinator.register_node(
@@ -240,10 +247,12 @@ class Test10KCapacity:
 
         # Verify node registration
         stats = coordinator.stats()
-        assert stats.total_nodes == num_nodes, \
+        assert stats.total_nodes == num_nodes, (
             f"Expected {num_nodes} nodes, got {stats.total_nodes}"
-        assert stats.total_capacity == num_nodes * workers_per_node, \
+        )
+        assert stats.total_capacity == num_nodes * workers_per_node, (
             f"Expected {num_nodes * workers_per_node} capacity, got {stats.total_capacity}"
+        )
 
         # Submit all requests
         start_time = time.time()
@@ -284,28 +293,34 @@ class Test10KCapacity:
                 "throughput_per_second": scale / execution_time,
                 "distribution_by_node": dict(processed_by_node),
                 "failure_reasons": Counter([r.error for r in failures if r.error]),
-            }
+            },
         )
 
         # Print certification report
         print(cert_result.to_report())
 
         # EXPLICIT ASSERTIONS
-        assert cert_result.passed, \
+        assert cert_result.passed, (
             f"CERTIFICATION FAILED: Success rate {success_rate:.2%} below 95% threshold"
+        )
 
-        assert len(successes) >= scale * 0.95, \
+        assert len(successes) >= scale * 0.95, (
             f"CERTIFICATION FAILED: Only {len(successes)} of {scale} requests succeeded"
+        )
 
-        assert final_stats.routed_requests >= scale * 0.95, \
+        assert final_stats.routed_requests >= scale * 0.95, (
             f"CERTIFICATION FAILED: Scheduler only routed {final_stats.routed_requests} requests"
+        )
 
         # Verify distribution (no single node got more than 15% of traffic)
         max_per_node = max(processed_by_node.values()) if processed_by_node else 0
-        assert max_per_node < scale * 0.15, \
+        assert max_per_node < scale * 0.15, (
             f"CERTIFICATION WARNING: Uneven distribution, max node got {max_per_node} requests"
+        )
 
-        print(f"\nCERTIFICATION PASSED: {scale} concurrent requests handled successfully")
+        print(
+            f"\nCERTIFICATION PASSED: {scale} concurrent requests handled successfully"
+        )
 
     @pytest.mark.anyio
     async def test_sustained_10k_throughput(self):
@@ -370,15 +385,19 @@ class Test10KCapacity:
         print(f"  Execution time: {execution_time:.2f}s")
         print(f"  Throughput: {throughput:.2f} req/s")
 
-        assert success_rate >= 0.95, \
+        assert success_rate >= 0.95, (
             f"Sustained throughput test failed: {success_rate:.2%} success rate"
+        )
 
-        print(f"\nCERTIFICATION PASSED: Sustained {scale} requests at {throughput:.2f} req/s")
+        print(
+            f"\nCERTIFICATION PASSED: Sustained {scale} requests at {throughput:.2f} req/s"
+        )
 
 
 # =============================================================================
 # CERTIFICATION 1B: REAL SANDBOX EXECUTION AT SCALE
 # =============================================================================
+
 
 class TestRealSandboxExecution:
     """
@@ -479,7 +498,9 @@ FINAL(f"{{task_id}}:{{computed_value}}:{{isolated}}")
         start_time = time.time()
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=50) as executor:
-            futures = [executor.submit(execute_real_sandbox, i) for i in range(num_sandboxes)]
+            futures = [
+                executor.submit(execute_real_sandbox, i) for i in range(num_sandboxes)
+            ]
             concurrent.futures.wait(futures)
 
         total_time = time.time() - start_time
@@ -490,17 +511,21 @@ FINAL(f"{{task_id}}:{{computed_value}}:{{isolated}}")
         success_rate = successful / num_sandboxes if num_sandboxes > 0 else 0
 
         # Verify isolation (each task got its own ID back)
-        isolation_verified = sum(1 for r in results.values() if r.get("isolated", False))
+        isolation_verified = sum(
+            1 for r in results.values() if r.get("isolated", False)
+        )
 
         # Verify computation (each result is unique and matches expected)
         unique_computations = len(set(r.get("computed", 0) for r in results.values()))
 
-        avg_exec_time = sum(execution_times) / len(execution_times) if execution_times else 0
+        avg_exec_time = (
+            sum(execution_times) / len(execution_times) if execution_times else 0
+        )
         throughput = num_sandboxes / total_time if total_time > 0 else 0
 
-        print(f"\n{'='*78}")
+        print(f"\n{'=' * 78}")
         print("REAL SANDBOX EXECUTION CERTIFICATION")
-        print(f"{'='*78}")
+        print(f"{'=' * 78}")
         print(f"  Total sandboxes spawned: {num_sandboxes:,}")
         print(f"  Successful executions: {successful:,}")
         print(f"  Failed executions: {failed}")
@@ -509,26 +534,31 @@ FINAL(f"{{task_id}}:{{computed_value}}:{{isolated}}")
         print(f"  Isolation verified: {isolation_verified:,}")
         print(f"  Unique computations: {unique_computations:,}")
         print(f"  Total time: {total_time:.2f}s")
-        print(f"  Avg execution time: {avg_exec_time*1000:.1f}ms")
+        print(f"  Avg execution time: {avg_exec_time * 1000:.1f}ms")
         print(f"  Throughput: {throughput:.1f} sandboxes/sec")
 
         if errors[:5]:
             print(f"\n  Sample errors: {errors[:5]}")
 
-        print(f"{'='*78}")
+        print(f"{'=' * 78}")
 
         # EXPLICIT ASSERTIONS
-        assert success_rate >= 0.95, \
+        assert success_rate >= 0.95, (
             f"CERTIFICATION FAILED: Only {success_rate:.2%} success rate"
+        )
 
-        assert isolation_verified >= successful * 0.99, \
+        assert isolation_verified >= successful * 0.99, (
             f"CERTIFICATION FAILED: Isolation breach detected ({isolation_verified}/{successful})"
+        )
 
         # Each task should produce a unique computation result
-        assert unique_computations >= successful * 0.99, \
+        assert unique_computations >= successful * 0.99, (
             "CERTIFICATION FAILED: Computation collision detected"
+        )
 
-        print(f"\nCERTIFICATION PASSED: {successful:,} real sandbox executions verified")
+        print(
+            f"\nCERTIFICATION PASSED: {successful:,} real sandbox executions verified"
+        )
 
     def test_concurrent_sandbox_isolation_stress(self):
         """
@@ -548,6 +578,7 @@ FINAL(f"{{task_id}}:{{computed_value}}:{{isolated}}")
         def stress_isolation(sandbox_id: int) -> None:
             """Stress test isolation by writing/reading unique secrets."""
             import random
+
             secret = f"SECRET_{sandbox_id}_{random.randint(10000, 99999)}"
 
             with lock:
@@ -582,15 +613,19 @@ FINAL(f"{{sandbox_id}}:{{secret_intact}}:{{no_leakage}}")
                 if result.final_answer:
                     parts = result.final_answer.split(":")
                     if len(parts) == 3:
-                        verified[sandbox_id] = (parts[1] == "True" and parts[2] == "True")
+                        verified[sandbox_id] = parts[1] == "True" and parts[2] == "True"
                     else:
                         verified[sandbox_id] = False
                 else:
                     verified[sandbox_id] = False
 
         # Run all concurrently
-        with concurrent.futures.ThreadPoolExecutor(max_workers=num_concurrent) as executor:
-            futures = [executor.submit(stress_isolation, i) for i in range(num_concurrent)]
+        with concurrent.futures.ThreadPoolExecutor(
+            max_workers=num_concurrent
+        ) as executor:
+            futures = [
+                executor.submit(stress_isolation, i) for i in range(num_concurrent)
+            ]
             concurrent.futures.wait(futures)
 
         # Count verified isolations
@@ -599,12 +634,15 @@ FINAL(f"{{sandbox_id}}:{{secret_intact}}:{{no_leakage}}")
         print("\nCONCURRENT SANDBOX ISOLATION STRESS:")
         print(f"  Concurrent sandboxes: {num_concurrent}")
         print(f"  Isolation verified: {verified_count}")
-        print(f"  Verification rate: {verified_count/num_concurrent:.2%}")
+        print(f"  Verification rate: {verified_count / num_concurrent:.2%}")
 
-        assert verified_count == num_concurrent, \
+        assert verified_count == num_concurrent, (
             f"CERTIFICATION FAILED: Only {verified_count}/{num_concurrent} sandboxes isolated"
+        )
 
-        print(f"\nCERTIFICATION PASSED: All {num_concurrent} concurrent sandboxes isolated")
+        print(
+            f"\nCERTIFICATION PASSED: All {num_concurrent} concurrent sandboxes isolated"
+        )
 
     def test_sandbox_with_data_namespace(self):
         """
@@ -668,10 +706,13 @@ FINAL(f"{task_id}:{result}:{correct_task}")
         print(f"  Correct data received: {correct_count}")
         print(f"  ID matches: {id_matches}")
 
-        assert correct_count == num_tests, \
+        assert correct_count == num_tests, (
             f"CERTIFICATION FAILED: Only {correct_count}/{num_tests} received correct data"
+        )
 
-        print(f"\nCERTIFICATION PASSED: All {num_tests} sandboxes received correct data")
+        print(
+            f"\nCERTIFICATION PASSED: All {num_tests} sandboxes received correct data"
+        )
 
     @pytest.mark.anyio
     async def test_coordinator_with_real_sandbox_execution(self):
@@ -765,12 +806,14 @@ FINAL(f"{{task_id}}:{{round(value, 4)}}:{{isolated}}")
                 try:
                     parts = cr.result.split(":")
                     if len(parts) == 3:
-                        successes.append({
-                            "request_id": i,
-                            "task_id": int(parts[0]),
-                            "value": float(parts[1]),
-                            "isolated": parts[2] == "True",
-                        })
+                        successes.append(
+                            {
+                                "request_id": i,
+                                "task_id": int(parts[0]),
+                                "value": float(parts[1]),
+                                "isolated": parts[2] == "True",
+                            }
+                        )
                     else:
                         failures.append(f"Request {i}: Invalid format")
                 except Exception as e:
@@ -784,9 +827,9 @@ FINAL(f"{{task_id}}:{{round(value, 4)}}:{{isolated}}")
 
         stats = coordinator.stats()
 
-        print(f"\n{'='*78}")
+        print(f"\n{'=' * 78}")
         print("END-TO-END CERTIFICATION: COORDINATOR + REAL SANDBOX EXECUTION")
-        print(f"{'='*78}")
+        print(f"{'=' * 78}")
         print(f"  Total requests: {num_requests:,}")
         print(f"  Successful: {len(successes):,}")
         print(f"  Failed: {len(failures)}")
@@ -801,19 +844,24 @@ FINAL(f"{{task_id}}:{{round(value, 4)}}:{{isolated}}")
         if failures[:5]:
             print(f"\n  Sample failures: {failures[:5]}")
 
-        print(f"{'='*78}")
+        print(f"{'=' * 78}")
 
         # EXPLICIT ASSERTIONS
-        assert success_rate >= 0.95, \
+        assert success_rate >= 0.95, (
             f"CERTIFICATION FAILED: Success rate {success_rate:.2%} below 95%"
+        )
 
-        assert sandbox_executions[0] >= num_requests * 0.95, \
+        assert sandbox_executions[0] >= num_requests * 0.95, (
             f"CERTIFICATION FAILED: Only {sandbox_executions[0]} sandboxes executed"
+        )
 
-        assert isolation_verified >= len(successes) * 0.99, \
+        assert isolation_verified >= len(successes) * 0.99, (
             "CERTIFICATION FAILED: Isolation not verified for all successes"
+        )
 
-        print(f"\nCERTIFICATION PASSED: Full end-to-end with {len(successes):,} real sandbox executions")
+        print(
+            f"\nCERTIFICATION PASSED: Full end-to-end with {len(successes):,} real sandbox executions"
+        )
 
     def test_scaling_sandbox_complexity(self):
         """
@@ -891,18 +939,22 @@ FINAL(f"{{my_sandbox_id}}:{{iteration}}:{{round(computed, 2)}}:{{isolated}}")
                         total_iterations_executed[0] += 1
 
                     if result.error:
-                        errors.append(f"Sandbox {sandbox_id} iter {iteration}: {result.error}")
+                        errors.append(
+                            f"Sandbox {sandbox_id} iter {iteration}: {result.error}"
+                        )
                         break
 
                     if result.final_answer:
                         parts = result.final_answer.split(":")
                         if len(parts) == 4:
-                            iteration_results.append({
-                                "sandbox_id": int(parts[0]),
-                                "iteration": int(parts[1]),
-                                "computed": float(parts[2]),
-                                "isolated": parts[3] == "True",
-                            })
+                            iteration_results.append(
+                                {
+                                    "sandbox_id": int(parts[0]),
+                                    "iteration": int(parts[1]),
+                                    "computed": float(parts[2]),
+                                    "isolated": parts[3] == "True",
+                                }
+                            )
                             if parts[3] != "True":
                                 all_isolated = False
 
@@ -913,7 +965,9 @@ FINAL(f"{{my_sandbox_id}}:{{iteration}}:{{round(computed, 2)}}:{{isolated}}")
                         "iterations_completed": len(iteration_results),
                         "total_time": elapsed,
                         "all_isolated": all_isolated,
-                        "final_computed": iteration_results[-1]["computed"] if iteration_results else 0,
+                        "final_computed": iteration_results[-1]["computed"]
+                        if iteration_results
+                        else 0,
                     }
 
             except Exception as e:
@@ -928,23 +982,40 @@ FINAL(f"{{my_sandbox_id}}:{{iteration}}:{{round(computed, 2)}}:{{isolated}}")
         start_time = time.time()
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=50) as executor:
-            futures = [executor.submit(run_multi_iteration_sandbox, i) for i in range(num_sandboxes)]
+            futures = [
+                executor.submit(run_multi_iteration_sandbox, i)
+                for i in range(num_sandboxes)
+            ]
             concurrent.futures.wait(futures)
 
         total_time = time.time() - start_time
 
         # Analyze results
-        successful = sum(1 for r in results.values() if r["iterations_completed"] == iterations_per_sandbox)
-        partial = sum(1 for r in results.values() if 0 < r["iterations_completed"] < iterations_per_sandbox)
+        successful = sum(
+            1
+            for r in results.values()
+            if r["iterations_completed"] == iterations_per_sandbox
+        )
+        partial = sum(
+            1
+            for r in results.values()
+            if 0 < r["iterations_completed"] < iterations_per_sandbox
+        )
         failed = num_sandboxes - successful - partial
-        isolation_verified = sum(1 for r in results.values() if r.get("all_isolated", False))
+        isolation_verified = sum(
+            1 for r in results.values() if r.get("all_isolated", False)
+        )
 
         expected_total_iterations = num_sandboxes * iterations_per_sandbox
-        iteration_success_rate = total_iterations_executed[0] / expected_total_iterations if expected_total_iterations > 0 else 0
+        iteration_success_rate = (
+            total_iterations_executed[0] / expected_total_iterations
+            if expected_total_iterations > 0
+            else 0
+        )
 
-        print(f"\n{'='*78}")
+        print(f"\n{'=' * 78}")
         print("SCALING SANDBOX COMPLEXITY CERTIFICATION")
-        print(f"{'='*78}")
+        print(f"{'=' * 78}")
         print(f"  Total sandboxes: {num_sandboxes:,}")
         print(f"  Iterations per sandbox: {iterations_per_sandbox}")
         print(f"  Expected total iterations: {expected_total_iterations:,}")
@@ -956,24 +1027,31 @@ FINAL(f"{{my_sandbox_id}}:{{iteration}}:{{round(computed, 2)}}:{{isolated}}")
         print(f"  Max concurrent sandboxes: {max_concurrent[0]}")
         print(f"  Isolation verified: {isolation_verified:,}")
         print(f"  Total time: {total_time:.2f}s")
-        print(f"  Throughput: {total_iterations_executed[0] / total_time:.1f} iterations/sec")
+        print(
+            f"  Throughput: {total_iterations_executed[0] / total_time:.1f} iterations/sec"
+        )
 
         if errors[:5]:
             print(f"\n  Sample errors: {errors[:5]}")
 
-        print(f"{'='*78}")
+        print(f"{'=' * 78}")
 
         # EXPLICIT ASSERTIONS
-        assert successful >= num_sandboxes * 0.95, \
+        assert successful >= num_sandboxes * 0.95, (
             f"CERTIFICATION FAILED: Only {successful}/{num_sandboxes} completed all iterations"
+        )
 
-        assert isolation_verified >= successful * 0.99, \
+        assert isolation_verified >= successful * 0.99, (
             "CERTIFICATION FAILED: Isolation breach in multi-iteration sandboxes"
+        )
 
-        assert iteration_success_rate >= 0.95, \
+        assert iteration_success_rate >= 0.95, (
             f"CERTIFICATION FAILED: Only {iteration_success_rate:.2%} of iterations succeeded"
+        )
 
-        print(f"\nCERTIFICATION PASSED: {successful:,} sandboxes x {iterations_per_sandbox} iterations = {total_iterations_executed[0]:,} total")
+        print(
+            f"\nCERTIFICATION PASSED: {successful:,} sandboxes x {iterations_per_sandbox} iterations = {total_iterations_executed[0]:,} total"
+        )
 
     @pytest.mark.anyio
     async def test_concurrent_scaling_stress(self):
@@ -1025,13 +1103,14 @@ isolated = True
 
 FINAL(f"{{sandbox_id}}:{{wave}}:{{iteration}}:{{round(result, 2)}}")
 """
-                    config = SandboxConfig(timeout_seconds=5.0, allowed_imports={"math"})
+                    config = SandboxConfig(
+                        timeout_seconds=5.0, allowed_imports={"math"}
+                    )
 
                     # Run in thread pool to not block event loop
                     loop = asyncio.get_event_loop()
                     result = await loop.run_in_executor(
-                        None,
-                        lambda: runner.run(code=code, namespace={}, config=config)
+                        None, lambda: runner.run(code=code, namespace={}, config=config)
                     )
 
                     if result.error:
@@ -1079,18 +1158,22 @@ FINAL(f"{{sandbox_id}}:{{wave}}:{{iteration}}:{{round(result, 2)}}")
             # Small delay before next wave (but previous waves still running)
             await asyncio.sleep(0.1)
 
-            print(f"  Wave {wave + 1}/{waves} submitted, current active: {current_active[0]}")
+            print(
+                f"  Wave {wave + 1}/{waves} submitted, current active: {current_active[0]}"
+            )
 
         # Wait for all waves to complete
         await asyncio.gather(*wave_tasks)
 
         total_time = time.time() - start_time
-        success_rate = total_completed[0] / total_submitted[0] if total_submitted[0] > 0 else 0
+        success_rate = (
+            total_completed[0] / total_submitted[0] if total_submitted[0] > 0 else 0
+        )
         total_iterations = total_completed[0] * iterations_per_sandbox
 
-        print(f"\n{'='*78}")
+        print(f"\n{'=' * 78}")
         print("CONCURRENT SCALING STRESS CERTIFICATION")
-        print(f"{'='*78}")
+        print(f"{'=' * 78}")
         print(f"  Waves: {waves}")
         print(f"  Sandboxes per wave: {sandboxes_per_wave}")
         print(f"  Iterations per sandbox: {iterations_per_sandbox}")
@@ -1102,16 +1185,20 @@ FINAL(f"{{sandbox_id}}:{{wave}}:{{iteration}}:{{round(result, 2)}}")
         print(f"  Total iterations executed: {total_iterations:,}")
         print(f"  Total time: {total_time:.2f}s")
         print(f"  Throughput: {total_iterations / total_time:.1f} iterations/sec")
-        print(f"{'='*78}")
+        print(f"{'=' * 78}")
 
         # EXPLICIT ASSERTIONS
-        assert success_rate >= 0.95, \
+        assert success_rate >= 0.95, (
             f"CERTIFICATION FAILED: Only {success_rate:.2%} success under scaling load"
+        )
 
-        assert max_concurrent[0] > sandboxes_per_wave, \
+        assert max_concurrent[0] > sandboxes_per_wave, (
             f"CERTIFICATION FAILED: Waves did not overlap (max concurrent: {max_concurrent[0]})"
+        )
 
-        print(f"\nCERTIFICATION PASSED: {total_completed[0]:,} sandboxes completed under scaling concurrent load")
+        print(
+            f"\nCERTIFICATION PASSED: {total_completed[0]:,} sandboxes completed under scaling concurrent load"
+        )
 
     def test_large_sandbox_with_growing_state(self):
         """
@@ -1190,13 +1277,16 @@ FINAL(f"{{my_id}}:{{history_size}}:{{data_size}}:{{isolated}}")
 
         # Run concurrently
         with concurrent.futures.ThreadPoolExecutor(max_workers=30) as executor:
-            futures = [executor.submit(run_growing_sandbox, i) for i in range(num_sandboxes)]
+            futures = [
+                executor.submit(run_growing_sandbox, i) for i in range(num_sandboxes)
+            ]
             concurrent.futures.wait(futures)
 
         # Analyze
         successful = sum(1 for r in results.values() if r["all_ok"])
         correct_state = sum(
-            1 for r in results.values()
+            1
+            for r in results.values()
             if r["final_state_size"] == r["expected_history"] + r["expected_data"]
         )
 
@@ -1204,22 +1294,29 @@ FINAL(f"{{my_id}}:{{history_size}}:{{data_size}}:{{isolated}}")
         print(f"  Sandboxes: {num_sandboxes}")
         print(f"  Iterations each: {iterations_per_sandbox}")
         print(f"  Data growth per iteration: {data_growth_per_iteration} items")
-        print(f"  Expected final state: {iterations_per_sandbox + iterations_per_sandbox * data_growth_per_iteration} items")
+        print(
+            f"  Expected final state: {iterations_per_sandbox + iterations_per_sandbox * data_growth_per_iteration} items"
+        )
         print(f"  Successful: {successful}")
         print(f"  Correct final state: {correct_state}")
 
-        assert successful >= num_sandboxes * 0.95, \
+        assert successful >= num_sandboxes * 0.95, (
             f"CERTIFICATION FAILED: Only {successful}/{num_sandboxes} completed with growing state"
+        )
 
-        assert correct_state >= successful * 0.99, \
+        assert correct_state >= successful * 0.99, (
             "CERTIFICATION FAILED: State not correctly accumulated"
+        )
 
-        print(f"\nCERTIFICATION PASSED: {successful} sandboxes handled growing state correctly")
+        print(
+            f"\nCERTIFICATION PASSED: {successful} sandboxes handled growing state correctly"
+        )
 
 
 # =============================================================================
 # CERTIFICATION 2: COMPLETE ISOLATION
 # =============================================================================
+
 
 class TestIsolationCertification:
     """
@@ -1294,7 +1391,9 @@ FINAL(str(result))
 
         # Run sandboxes concurrently
         with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
-            futures = [executor.submit(run_isolated_sandbox, i) for i in range(num_sandboxes)]
+            futures = [
+                executor.submit(run_isolated_sandbox, i) for i in range(num_sandboxes)
+            ]
             concurrent.futures.wait(futures)
 
         # Verify results
@@ -1311,14 +1410,17 @@ FINAL(str(result))
             print(f"  Error samples: {errors[:5]}")
 
         # EXPLICIT ASSERTIONS
-        assert len(errors) == 0, \
+        assert len(errors) == 0, (
             f"CERTIFICATION FAILED: {len(errors)} sandbox execution errors"
+        )
 
-        assert isolated_count == num_sandboxes, \
+        assert isolated_count == num_sandboxes, (
             f"CERTIFICATION FAILED: Only {isolated_count}/{num_sandboxes} sandboxes were isolated"
+        )
 
-        assert leaked_count == 0, \
+        assert leaked_count == 0, (
             f"CERTIFICATION FAILED: {leaked_count} secrets leaked between sandboxes"
+        )
 
         print(f"\nCERTIFICATION PASSED: {num_sandboxes} sandboxes fully isolated")
 
@@ -1354,27 +1456,37 @@ FINAL(stored_value)
             return False
 
         # Run all concurrently
-        with concurrent.futures.ThreadPoolExecutor(max_workers=num_concurrent) as executor:
-            futures = {executor.submit(verify_isolation, i): i for i in range(num_concurrent)}
+        with concurrent.futures.ThreadPoolExecutor(
+            max_workers=num_concurrent
+        ) as executor:
+            futures = {
+                executor.submit(verify_isolation, i): i for i in range(num_concurrent)
+            }
             for f in futures:
                 f.result()
 
         # Verify all values match
-        matches = sum(1 for i, v in returned_values.items() if v == unique_values.get(i))
+        matches = sum(
+            1 for i, v in returned_values.items() if v == unique_values.get(i)
+        )
 
         print("\nCONCURRENT ISOLATION STRESS TEST:")
         print(f"  Concurrent sandboxes: {num_concurrent}")
         print(f"  Values correctly isolated: {matches}")
 
-        assert matches == num_concurrent, \
+        assert matches == num_concurrent, (
             f"CERTIFICATION FAILED: Only {matches}/{num_concurrent} values correctly isolated"
+        )
 
-        print(f"\nCERTIFICATION PASSED: All {num_concurrent} concurrent operations isolated")
+        print(
+            f"\nCERTIFICATION PASSED: All {num_concurrent} concurrent operations isolated"
+        )
 
 
 # =============================================================================
 # CERTIFICATION 3: RESOURCE LIMIT ENFORCEMENT
 # =============================================================================
+
 
 class TestResourceLimitsCertification:
     """
@@ -1421,12 +1533,14 @@ FINAL(counter)  # Never reached
         print(f"  Timed out: {result.timed_out}")
 
         # EXPLICIT ASSERTIONS
-        assert result.timed_out, \
+        assert result.timed_out, (
             "CERTIFICATION FAILED: Infinite loop was not terminated"
+        )
 
         # Allow some overhead but should be within 2x timeout
-        assert elapsed < timeout_seconds * 2, \
+        assert elapsed < timeout_seconds * 2, (
             f"CERTIFICATION FAILED: Termination took {elapsed:.2f}s, expected < {timeout_seconds * 2}s"
+        )
 
         print(f"\nCERTIFICATION PASSED: Timeout enforced in {elapsed:.2f}s")
 
@@ -1463,11 +1577,13 @@ FINAL("IMPORTED: {module_name}")
             result = runner.run(code=code, namespace={}, config=config)
 
             blocked = result.error is not None and "blocked" in result.error.lower()
-            results.append({
-                "module": module_name,
-                "blocked": blocked,
-                "error": result.error,
-            })
+            results.append(
+                {
+                    "module": module_name,
+                    "blocked": blocked,
+                    "error": result.error,
+                }
+            )
 
             if blocked:
                 blocked_count += 1
@@ -1479,10 +1595,13 @@ FINAL("IMPORTED: {module_name}")
         print(f"  Total blocked: {blocked_count}/{len(dangerous_imports)}")
 
         # EXPLICIT ASSERTIONS
-        assert blocked_count == len(dangerous_imports), \
+        assert blocked_count == len(dangerous_imports), (
             f"CERTIFICATION FAILED: Only {blocked_count}/{len(dangerous_imports)} dangerous imports blocked"
+        )
 
-        print(f"\nCERTIFICATION PASSED: All {len(dangerous_imports)} dangerous imports blocked")
+        print(
+            f"\nCERTIFICATION PASSED: All {len(dangerous_imports)} dangerous imports blocked"
+        )
 
     def test_dunder_access_blocked(self):
         """
@@ -1514,8 +1633,9 @@ FINAL("IMPORTED: {module_name}")
         print(f"  Escape attempts: {len(escape_attempts)}")
         print(f"  Blocked: {blocked_count}")
 
-        assert blocked_count == len(escape_attempts), \
+        assert blocked_count == len(escape_attempts), (
             f"CERTIFICATION FAILED: Only {blocked_count}/{len(escape_attempts)} escape attempts blocked"
+        )
 
         print("\nCERTIFICATION PASSED: All dunder escape attempts blocked")
 
@@ -1523,6 +1643,7 @@ FINAL("IMPORTED: {module_name}")
 # =============================================================================
 # CERTIFICATION 4: ADMISSION CONTROL
 # =============================================================================
+
 
 class TestAdmissionControlCertification:
     """
@@ -1568,7 +1689,9 @@ class TestAdmissionControlCertification:
         assert rejected_queue, "Should reject when queue full"
         assert rejected_load, "Should reject at high load"
 
-        print("\nCERTIFICATION PASSED: Admission control correctly rejects over-capacity")
+        print(
+            "\nCERTIFICATION PASSED: Admission control correctly rejects over-capacity"
+        )
 
     @pytest.mark.anyio
     async def test_429_with_retry_after(self):
@@ -1600,17 +1723,22 @@ class TestAdmissionControlCertification:
         print(f"  Retry-after seconds: {result.retry_after_seconds}")
 
         assert not result.success, "Should reject when at capacity"
-        assert result.retry_after_seconds is not None, \
+        assert result.retry_after_seconds is not None, (
             "CERTIFICATION FAILED: No retry-after provided"
-        assert result.retry_after_seconds > 0, \
+        )
+        assert result.retry_after_seconds > 0, (
             "CERTIFICATION FAILED: retry-after should be positive"
+        )
 
-        print(f"\nCERTIFICATION PASSED: 429 includes retry-after: {result.retry_after_seconds}s")
+        print(
+            f"\nCERTIFICATION PASSED: 429 includes retry-after: {result.retry_after_seconds}s"
+        )
 
 
 # =============================================================================
 # CERTIFICATION 5: CIRCUIT BREAKER & FAULT TOLERANCE
 # =============================================================================
+
 
 class TestFaultToleranceCertification:
     """
@@ -1645,13 +1773,15 @@ class TestFaultToleranceCertification:
         # Record failures to trip circuit
         for i in range(3):
             breaker.record_failure()
-            states.append(f"After failure {i+1}: {breaker.state.value}")
+            states.append(f"After failure {i + 1}: {breaker.state.value}")
 
         assert breaker.state == CircuitState.OPEN, "Should be OPEN after failures"
 
         # Verify requests rejected when open
         allowed_when_open = breaker.allow_request()
-        states.append(f"Request when OPEN: {'allowed' if allowed_when_open else 'rejected'}")
+        states.append(
+            f"Request when OPEN: {'allowed' if allowed_when_open else 'rejected'}"
+        )
         assert not allowed_when_open, "Should reject when OPEN"
 
         # Wait for reset timeout
@@ -1660,7 +1790,9 @@ class TestFaultToleranceCertification:
         # Should transition to half-open
         breaker.allow_request()
         states.append(f"After timeout: {breaker.state.value}")
-        assert breaker.state == CircuitState.HALF_OPEN, "Should be HALF_OPEN after timeout"
+        assert breaker.state == CircuitState.HALF_OPEN, (
+            "Should be HALF_OPEN after timeout"
+        )
 
         # Record successes to close
         breaker.record_success()
@@ -1735,15 +1867,19 @@ class TestFaultToleranceCertification:
 
         # After circuit opens, requests should go to working node
         # At least some requests should succeed
-        assert success_count[0] > 0, \
+        assert success_count[0] > 0, (
             "CERTIFICATION FAILED: No requests succeeded after node isolation"
+        )
 
-        print(f"\nCERTIFICATION PASSED: Failing node isolated, {success_count[0]} requests succeeded")
+        print(
+            f"\nCERTIFICATION PASSED: Failing node isolated, {success_count[0]} requests succeeded"
+        )
 
 
 # =============================================================================
 # CERTIFICATION 6: METRICS & OBSERVABILITY
 # =============================================================================
+
 
 class TestMetricsCertification:
     """
@@ -1801,20 +1937,25 @@ class TestMetricsCertification:
         print(f"  Admission rejected: {snap.admission_rejected}")
 
         # EXPLICIT ASSERTIONS
-        assert snap.requests_total.get("success", 0) == expected_successes, \
+        assert snap.requests_total.get("success", 0) == expected_successes, (
             "CERTIFICATION FAILED: Success count mismatch"
-        assert snap.requests_total.get("error", 0) == expected_failures, \
+        )
+        assert snap.requests_total.get("error", 0) == expected_failures, (
             "CERTIFICATION FAILED: Failure count mismatch"
-        assert snap.admission_accepted == 80, \
+        )
+        assert snap.admission_accepted == 80, (
             "CERTIFICATION FAILED: Admission accepted count mismatch"
-        assert snap.admission_rejected == 20, \
+        )
+        assert snap.admission_rejected == 20, (
             "CERTIFICATION FAILED: Admission rejected count mismatch"
+        )
 
         # Verify node distribution
         for node_id, expected in expected_by_node.items():
             actual = snap.requests_by_node.get(node_id, 0)
-            assert actual == expected, \
+            assert actual == expected, (
                 f"CERTIFICATION FAILED: Node {node_id} count mismatch: {actual} != {expected}"
+            )
 
         print("\nCERTIFICATION PASSED: All metrics accurate")
 
@@ -1865,6 +2006,7 @@ class TestMetricsCertification:
 # CERTIFICATION 7: AUDIT TRAIL
 # =============================================================================
 
+
 class TestAuditTrailCertification:
     """
     CERTIFICATION: Complete logging of all request lifecycles.
@@ -1907,8 +2049,9 @@ class TestAuditTrailCertification:
         print(f"  Events logged: {stats['events_logged']}")
         print("  Expected events: 3")
 
-        assert stats["events_logged"] == 3, \
+        assert stats["events_logged"] == 3, (
             "CERTIFICATION FAILED: Not all lifecycle events logged"
+        )
 
         print("\nCERTIFICATION PASSED: Complete audit trail captured")
 
@@ -1942,10 +2085,12 @@ class TestAuditTrailCertification:
         print(f"  Event fields: {list(event_dict.keys())}")
 
         for field in sensitive_fields:
-            assert field not in event_dict, \
+            assert field not in event_dict, (
                 f"CERTIFICATION FAILED: Sensitive field '{field}' in audit log"
-            assert field not in event_json, \
+            )
+            assert field not in event_json, (
                 f"CERTIFICATION FAILED: Sensitive field '{field}' in JSON"
+            )
 
         print("\nCERTIFICATION PASSED: No sensitive content in audit logs")
 
@@ -1965,8 +2110,9 @@ class TestAuditTrailCertification:
         print("\nSECURITY EVENT LOGGING TEST:")
         print(f"  Security events logged: {stats['events_logged']}")
 
-        assert stats["events_logged"] == 3, \
+        assert stats["events_logged"] == 3, (
             "CERTIFICATION FAILED: Security events not logged"
+        )
 
         print("\nCERTIFICATION PASSED: Security events properly logged")
 
@@ -1974,6 +2120,7 @@ class TestAuditTrailCertification:
 # =============================================================================
 # CERTIFICATION 8: STABILITY & STRESS TESTING
 # =============================================================================
+
 
 class TestStabilityCertification:
     """
@@ -2039,17 +2186,21 @@ class TestStabilityCertification:
         print(f"  Final active count: {stats.active}")
 
         # EXPLICIT ASSERTIONS
-        assert success_count[0] == iterations, \
+        assert success_count[0] == iterations, (
             f"CERTIFICATION FAILED: Only {success_count[0]}/{iterations} succeeded"
+        )
 
-        assert error_count[0] == 0, \
+        assert error_count[0] == 0, (
             f"CERTIFICATION FAILED: {error_count[0]} errors occurred"
+        )
 
-        assert max_concurrent_seen[0] <= stats.max_concurrent, \
+        assert max_concurrent_seen[0] <= stats.max_concurrent, (
             f"CERTIFICATION FAILED: Exceeded limit ({max_concurrent_seen[0]} > {stats.max_concurrent})"
+        )
 
-        assert stats.active == 0, \
+        assert stats.active == 0, (
             f"CERTIFICATION FAILED: {stats.active} slots still held after completion"
+        )
 
         print(f"\nCERTIFICATION PASSED: Limiter stable over {iterations} iterations")
 
@@ -2097,8 +2248,9 @@ class TestStabilityCertification:
         print(f"  Routed by coordinator: {stats.routed_requests}")
 
         # Allow for small variance due to timing
-        assert successes >= iterations * 0.95, \
+        assert successes >= iterations * 0.95, (
             f"CERTIFICATION FAILED: Only {successes}/{iterations} succeeded"
+        )
 
         print(f"\nCERTIFICATION PASSED: Coordinator stable over {iterations} requests")
 
@@ -2106,6 +2258,7 @@ class TestStabilityCertification:
 # =============================================================================
 # SUMMARY TEST: FULL CERTIFICATION SUITE
 # =============================================================================
+
 
 class TestFullCertification:
     """
@@ -2122,7 +2275,9 @@ class TestFullCertification:
         print("\n" + "=" * 78)
         print("ENZU GOVERNMENT COMPLIANCE CERTIFICATION SUMMARY")
         print("=" * 78)
-        print(f"\nTest Mode: {'FULL CERTIFICATION' if FULL_CERTIFICATION_MODE else 'DEVELOPMENT'}")
+        print(
+            f"\nTest Mode: {'FULL CERTIFICATION' if FULL_CERTIFICATION_MODE else 'DEVELOPMENT'}"
+        )
         print(f"Scale Factor: {get_scale():,} requests")
         print("\nCertification Categories:")
         print("  1. 10K Concurrent Capacity")
@@ -2134,13 +2289,16 @@ class TestFullCertification:
         print("  7. Audit Trail")
         print("  8. Stability & Stress Testing")
         print("\nTo run full 10K certification:")
-        print("  ENZU_FULL_CERTIFICATION=true pytest tests/test_government_compliance_10k.py -v")
+        print(
+            "  ENZU_FULL_CERTIFICATION=true pytest tests/test_government_compliance_10k.py -v"
+        )
         print("\n" + "=" * 78)
 
 
 # =============================================================================
 # PYTEST MARKERS
 # =============================================================================
+
 
 def pytest_configure(config):
     """Register custom markers."""

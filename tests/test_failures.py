@@ -248,7 +248,10 @@ print(second)
 
     assert report.success is False
     assert report.steps[0].error is not None
-    assert "critical budget threshold" in report.steps[0].error or "budget_exhausted" in report.steps[0].error
+    assert (
+        "critical budget threshold" in report.steps[0].error
+        or "budget_exhausted" in report.steps[0].error
+    )
     assert "SUBCALL:second" not in provider.calls
 
 
@@ -333,9 +336,9 @@ def test_rlm_prompt_is_goal_when_no_criteria() -> None:
     from enzu import run
 
     # Mock the provider to avoid actual API calls
-    mock_provider = MockProvider(main_outputs=[
-        '```python\nFINAL("Found the issue")\n```'
-    ])
+    mock_provider = MockProvider(
+        main_outputs=['```python\nFINAL("Found the issue")\n```']
+    )
 
     # No explicit success criteria - prompt should become the goal
     report = run(
@@ -357,9 +360,9 @@ def test_rlm_budget_triggers_goal_mode_without_data() -> None:
     from enzu import run
     from enzu.models import RLMExecutionReport
 
-    mock_provider = MockProvider(main_outputs=[
-        '```python\nFINAL("Done analyzing the embedded data")\n```'
-    ])
+    mock_provider = MockProvider(
+        main_outputs=['```python\nFINAL("Done analyzing the embedded data")\n```']
+    )
 
     # No data, but cost triggers RLM mode. Prompt contains everything.
     report = run(

@@ -9,6 +9,7 @@ Tests cover:
 5. Safe helper injection
 6. Multiple block detection
 """
+
 from __future__ import annotations
 
 
@@ -22,6 +23,7 @@ from enzu.repl import (
     safe_sort,
 )
 from enzu.models import Budget
+
 # Feedback functions extracted to rlm/feedback.py for modularity
 from enzu.rlm.feedback import (
     analyze_code_patterns,
@@ -30,6 +32,7 @@ from enzu.rlm.feedback import (
     extract_code,
     format_feedback,
 )
+
 # Prompt constants extracted to rlm/prompts.py
 from enzu.rlm.engine import RLMEngine
 from enzu.rlm.budget import BudgetTracker as _BudgetTracker
@@ -164,7 +167,10 @@ another_call = llm_query("more")
 """
         warnings = analyze_code_patterns(code)
         assert len(warnings) >= 1
-        assert any("llm_query" in w and ("loop" in w.lower() or "runtime" in w.lower()) for w in warnings)
+        assert any(
+            "llm_query" in w and ("loop" in w.lower() or "runtime" in w.lower())
+            for w in warnings
+        )
 
     def test_full_data_to_llm_query(self) -> None:
         code = 'result = llm_query(f"Analyze: {data}")'
@@ -342,6 +348,7 @@ FINAL("good answer")
         assert len(report.steps) == 2
         assert report.errors == []
         assert "[REJECTED]" in report.steps[0].prompt
+
 
 class TestSandboxSafeHelpers:
     """Test safe helpers injection into sandbox."""

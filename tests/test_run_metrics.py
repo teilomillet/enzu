@@ -2,7 +2,12 @@
 
 from datetime import datetime, timezone, timedelta
 
-from enzu.metrics import RunEvent, RunMetricsCollector, get_run_metrics, reset_run_metrics
+from enzu.metrics import (
+    RunEvent,
+    RunMetricsCollector,
+    get_run_metrics,
+    reset_run_metrics,
+)
 from enzu.models import Outcome, BudgetUsage, ExecutionReport, VerificationResult
 
 
@@ -143,7 +148,10 @@ class TestRunMetricsCollector:
         percentiles = collector.percentiles()
         assert percentiles["elapsed_seconds"]["p50"] is not None
         assert percentiles["elapsed_seconds"]["p95"] is not None
-        assert percentiles["elapsed_seconds"]["p50"] < percentiles["elapsed_seconds"]["p95"]
+        assert (
+            percentiles["elapsed_seconds"]["p50"]
+            < percentiles["elapsed_seconds"]["p95"]
+        )
 
     def test_outcome_distribution(self):
         collector = RunMetricsCollector()

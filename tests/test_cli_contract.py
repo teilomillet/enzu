@@ -24,7 +24,9 @@ def test_cli_print_schema_bundle(capsys, monkeypatch) -> None:
     exit_code = cli.main()
     assert exit_code == 0
     payload = json.loads(capsys.readouterr().out)
-    assert {"meta", "task_input", "task_spec", "run_payload", "report"} <= set(payload.keys())
+    assert {"meta", "task_input", "task_spec", "run_payload", "report"} <= set(
+        payload.keys()
+    )
 
 
 def test_cli_guided_mode_chat(capsys, monkeypatch) -> None:
@@ -34,7 +36,11 @@ def test_cli_guided_mode_chat(capsys, monkeypatch) -> None:
     monkeypatch.setattr(sys, "stdin", _TTYStdin())
     monkeypatch.setattr(sys, "argv", ["enzu"])
     monkeypatch.setattr(cli, "list_providers", lambda: ["openrouter"])
-    monkeypatch.setattr(cli, "resolve_provider", lambda *args, **kwargs: MockProvider(main_outputs=["Hello"]))
+    monkeypatch.setattr(
+        cli,
+        "resolve_provider",
+        lambda *args, **kwargs: MockProvider(main_outputs=["Hello"]),
+    )
 
     exit_code = cli.main()
     assert exit_code == 0

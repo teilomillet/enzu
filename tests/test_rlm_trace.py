@@ -24,7 +24,7 @@ class TestRLMExecutionReportFields:
             ),
             errors=[],
         )
-        
+
         # Fields accessed by rlm_trace.py
         assert hasattr(report, "success")
         assert hasattr(report, "answer")
@@ -64,5 +64,8 @@ class TestRLMExecutionReportFields:
         errors_fail: list[str] = ["verification_failed:no_output"]
         assert any("verification_failed" in e for e in errors_fail)
 
-        errors_multi: list[str] = ["budget_exceeded", "verification_failed:min_word_count"]
+        errors_multi: list[str] = [
+            "budget_exceeded",
+            "verification_failed:min_word_count",
+        ]
         assert any("verification_failed" in e for e in errors_multi)

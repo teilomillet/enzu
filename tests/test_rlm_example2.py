@@ -63,9 +63,7 @@ FINAL_VAR("result")
     criteria = SuccessCriteria(required_substrings=["beta"])
     task = TaskSpec(
         task_id="example2",
-        input_text=(
-            "Find the function with the highest cyclomatic complexity."
-        ),
+        input_text=("Find the function with the highest cyclomatic complexity."),
         model="mock-model",
         budget=budget,
         success_criteria=criteria,
@@ -91,9 +89,7 @@ def test_rlm_example2_integration() -> None:
     model = os.getenv("OPENROUTER_MODEL", "openai/gpt-4o-mini")
     task = TaskSpec(
         task_id="example2-live",
-        input_text=(
-            "Find the function with the highest cyclomatic complexity."
-        ),
+        input_text=("Find the function with the highest cyclomatic complexity."),
         model=model,
         budget=budget,
         success_criteria=criteria,

@@ -10,6 +10,7 @@ Tests cover:
 - Subcall handling simulation
 - Budget enforcement across runtime layers
 """
+
 from __future__ import annotations
 
 import threading
@@ -212,7 +213,11 @@ class TestRuntimeRLMBasicIntegration:
             results.append(result)
 
         assert all(r.success for r in results)
-        assert [r.task_id for r in results] == ["seq_task_0", "seq_task_1", "seq_task_2"]
+        assert [r.task_id for r in results] == [
+            "seq_task_0",
+            "seq_task_1",
+            "seq_task_2",
+        ]
         assert worker.executed_tasks == ["seq_task_0", "seq_task_1", "seq_task_2"]
 
     def test_parallel_task_dispatch(self):
@@ -386,10 +391,7 @@ class TestRuntimeTaskIsolation:
 
     def test_parallel_tasks_isolated(self):
         """Parallel tasks don't interfere with each other."""
-        workers = [
-            RLMSimulatingWorker(max_concurrent=5, delay=0.02)
-            for _ in range(2)
-        ]
+        workers = [RLMSimulatingWorker(max_concurrent=5, delay=0.02) for _ in range(2)]
         runtime = DistributedRuntime(workers=workers)
 
         # Submit many tasks in parallel
@@ -572,10 +574,7 @@ class TestConcurrentRLMExecution:
 
     def test_map_executes_in_parallel(self):
         """Runtime.map() executes multiple tasks in parallel."""
-        workers = [
-            RLMSimulatingWorker(max_concurrent=4, delay=0.01)
-            for _ in range(2)
-        ]
+        workers = [RLMSimulatingWorker(max_concurrent=4, delay=0.01) for _ in range(2)]
         runtime = DistributedRuntime(workers=workers)
 
         specs = [make_spec(f"map_task_{i}") for i in range(8)]
@@ -621,7 +620,9 @@ class TestConcurrentRLMExecution:
         elapsed = time.monotonic() - start
 
         successful = sum(1 for r in results if r.success)
-        print(f"\nConcurrent execution: {successful}/{num_tasks} succeeded in {elapsed:.2f}s")
+        print(
+            f"\nConcurrent execution: {successful}/{num_tasks} succeeded in {elapsed:.2f}s"
+        )
 
         assert successful == num_tasks
         assert all(r.task_id == f"concurrent_{i}" for i, r in enumerate(results))

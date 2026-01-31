@@ -57,4 +57,3 @@ FINAL(context)
 
     assert report.success
     assert "https://example.com/a" in (report.answer or "")
-

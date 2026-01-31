@@ -11,6 +11,7 @@ Tests cover:
 7. RLM vs Chat Engine behavior differences
 8. Sub-RLM weak criteria handling
 """
+
 from __future__ import annotations
 
 import random
@@ -62,6 +63,7 @@ def _make_task(
 # =============================================================================
 # Empty Output Handling
 # =============================================================================
+
 
 class TestEmptyOutputHandling:
     """Empty output must always fail verification."""
@@ -116,6 +118,7 @@ class TestEmptyOutputHandling:
 # Goal-Only Verification (RLM trusts model judgment)
 # =============================================================================
 
+
 class TestGoalOnlyVerification:
     """Goal-only: model self-judges, any non-empty output passes."""
 
@@ -146,6 +149,7 @@ class TestGoalOnlyVerification:
 # =============================================================================
 # Goal + Mechanical Criteria (both must pass)
 # =============================================================================
+
 
 class TestGoalPlusMechanical:
     """When goal AND mechanical criteria set, both must pass."""
@@ -190,9 +194,7 @@ class TestGoalPlusMechanical:
             required_regex=[r"physicist"],
             min_word_count=5,
         )
-        result = _rlm_verify(
-            task, "Einstein was a physicist in 1921 period"
-        )
+        result = _rlm_verify(task, "Einstein was a physicist in 1921 period")
         assert result.passed is True
 
     def test_goal_plus_multiple_mechanical_partial_fail(self) -> None:
@@ -210,6 +212,7 @@ class TestGoalPlusMechanical:
 # =============================================================================
 # Invalid Regex Handling
 # =============================================================================
+
 
 class TestInvalidRegex:
     """Invalid regex patterns should fail gracefully, not crash."""
@@ -254,6 +257,7 @@ class TestInvalidRegex:
 # Case Sensitivity
 # =============================================================================
 
+
 class TestCaseSensitivity:
     """Test case_insensitive flag for substrings and regex."""
 
@@ -296,6 +300,7 @@ class TestCaseSensitivity:
 # =============================================================================
 # min_word_count Edge Cases
 # =============================================================================
+
 
 class TestMinWordCount:
     """Test min_word_count boundary conditions."""
@@ -355,6 +360,7 @@ def test_min_word_count_fuzz() -> None:
 # Substring Edge Cases
 # =============================================================================
 
+
 class TestSubstringEdgeCases:
     """Test substring matching edge cases."""
 
@@ -400,6 +406,7 @@ class TestSubstringEdgeCases:
 # Regex Edge Cases
 # =============================================================================
 
+
 class TestRegexEdgeCases:
     """Test regex matching edge cases."""
 
@@ -434,6 +441,7 @@ class TestRegexEdgeCases:
 # Strong Criteria Detection
 # =============================================================================
 
+
 class TestStrongCriteriaDetection:
     """Test _has_strong_success_criteria function."""
 
@@ -466,6 +474,7 @@ class TestStrongCriteriaDetection:
 # =============================================================================
 # Chat Engine vs RLM Engine Differences
 # =============================================================================
+
 
 class TestEnginesDifferences:
     """Test differences between Chat and RLM Engine verification."""
@@ -514,6 +523,7 @@ class TestEnginesDifferences:
 # Integration Tests with Full Task Execution
 # =============================================================================
 
+
 class TestIntegrationVerification:
     """Integration tests using actual Engine.run() and RLMEngine.run()."""
 
@@ -560,10 +570,12 @@ class TestIntegrationVerification:
 
         # First output: FINAL with empty string (rejected)
         # Second output: FINAL with content (accepted)
-        provider = MockProvider(main_outputs=[
-            '```python\nFINAL("")\n```',
-            '```python\nFINAL("actual answer")\n```',
-        ])
+        provider = MockProvider(
+            main_outputs=[
+                '```python\nFINAL("")\n```',
+                '```python\nFINAL("actual answer")\n```',
+            ]
+        )
         task = TaskSpec(
             task_id="test",
             input_text="answer",
@@ -581,6 +593,7 @@ class TestIntegrationVerification:
 # =============================================================================
 # Robustness Tests
 # =============================================================================
+
 
 class TestRobustness:
     """Tests for edge cases and potential attack vectors."""
@@ -632,12 +645,14 @@ class TestRobustness:
 
     def test_unicode_edge_cases(self) -> None:
         """Verification handles various Unicode edge cases."""
-        task = _make_task(required_substrings=[
-            "\U0001F600",  # Emoji
-            "\u200b",      # Zero-width space
-            "\ufeff",      # BOM
-        ])
-        result = _rlm_verify(task, "\U0001F600\u200b\ufeff")
+        task = _make_task(
+            required_substrings=[
+                "\U0001f600",  # Emoji
+                "\u200b",  # Zero-width space
+                "\ufeff",  # BOM
+            ]
+        )
+        result = _rlm_verify(task, "\U0001f600\u200b\ufeff")
         assert result.passed is True
 
     def test_combining_characters(self) -> None:

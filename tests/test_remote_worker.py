@@ -9,6 +9,7 @@ This test suite validates RemoteWorker functionality:
 - Health checks
 - Error handling for network issues
 """
+
 from __future__ import annotations
 
 import json
@@ -21,7 +22,13 @@ import socket
 
 import pytest
 
-from enzu.models import Budget, BudgetUsage, RLMExecutionReport, SuccessCriteria, TaskSpec
+from enzu.models import (
+    Budget,
+    BudgetUsage,
+    RLMExecutionReport,
+    SuccessCriteria,
+    TaskSpec,
+)
 from enzu.runtime import (
     DistributedRuntime,
     ProviderSpec,

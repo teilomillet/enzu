@@ -9,6 +9,7 @@ Validates that RLM works correctly with container isolation:
 
 Uses OpenRouter API with model "z-ai/glm-4.7" from .env file.
 """
+
 from __future__ import annotations
 
 import os
@@ -51,6 +52,7 @@ pytestmark = [
 @dataclass
 class ContainerTestResult:
     """Result from a container isolation test."""
+
     test_name: str
     success: bool
     answer: Optional[str]
@@ -69,10 +71,11 @@ def get_provider():
 # Basic IPC Tests
 # =============================================================================
 
+
 def test_rlm_container_isolation_basic_recursive_subcall():
     """
     Test basic RLM execution with container isolation and recursive sub-task.
-    
+
     Verifies:
     - Container isolation works
     - llm_query works via IPC
@@ -80,9 +83,9 @@ def test_rlm_container_isolation_basic_recursive_subcall():
     """
     if not is_container_available():
         pytest.skip("Docker not available, skipping container test")
-    
+
     provider = get_provider()
-    
+
     task = TaskSpec(
         task_id=f"container-basic-{uuid4().hex[:8]}",
         input_text=(
@@ -97,7 +100,7 @@ def test_rlm_container_isolation_basic_recursive_subcall():
             required_substrings=["Python"],
         ),
     )
-    
+
     engine = RLMEngine(
         isolation="container",
         max_steps=5,
@@ -105,19 +108,19 @@ def test_rlm_container_isolation_basic_recursive_subcall():
         max_recursion_depth=1,
         subcall_max_steps=3,
     )
-    
+
     start_time = time.time()
     report = engine.run(task, provider, data="Context about programming languages")
     duration_ms = (time.time() - start_time) * 1000
-    
+
     # Count subcalls by checking steps
     subcalls = len([s for s in report.steps if "llm_query" in str(s).lower()])
-    
+
     assert report.success, f"RLM failed: {report.errors}"
     assert report.answer is not None, "No answer returned"
     assert "Python" in report.answer, f"Answer should mention Python: {report.answer}"
     assert subcalls > 0, "Should have made at least one subcall via llm_query"
-    
+
     print("✓ Container isolation test passed")
     print(f"  Duration: {duration_ms:.0f}ms")
     print(f"  Subcalls: {subcalls}")
@@ -127,14 +130,14 @@ def test_rlm_container_isolation_basic_recursive_subcall():
 def test_rlm_subprocess_isolation_basic_recursive_subcall():
     """
     Test basic RLM execution with subprocess isolation and recursive sub-task.
-    
+
     Verifies:
     - Subprocess isolation works
     - llm_query works via IPC
     - Recursive sub-tasks execute correctly
     """
     provider = get_provider()
-    
+
     task = TaskSpec(
         task_id=f"subprocess-basic-{uuid4().hex[:8]}",
         input_text=(
@@ -152,7 +155,7 @@ def test_rlm_subprocess_isolation_basic_recursive_subcall():
             required_substrings=["Docker"],
         ),
     )
-    
+
     engine = RLMEngine(
         isolation="subprocess",
         max_steps=5,
@@ -160,19 +163,19 @@ def test_rlm_subprocess_isolation_basic_recursive_subcall():
         max_recursion_depth=1,
         subcall_max_steps=3,
     )
-    
+
     start_time = time.time()
     report = engine.run(task, provider, data="Context about containerization")
     duration_ms = (time.time() - start_time) * 1000
-    
+
     # Count subcalls
     subcalls = len([s for s in report.steps if "llm_query" in str(s).lower()])
-    
+
     assert report.success, f"RLM failed: {report.errors}"
     assert report.answer is not None, "No answer returned"
     assert "Docker" in report.answer, f"Answer should mention Docker: {report.answer}"
     assert subcalls > 0, "Should have made at least one subcall via llm_query"
-    
+
     print("✓ Subprocess isolation test passed")
     print(f"  Duration: {duration_ms:.0f}ms")
     print(f"  Subcalls: {subcalls}")
@@ -182,16 +185,16 @@ def test_rlm_subprocess_isolation_basic_recursive_subcall():
 def test_rlm_container_isolation_llm_batch():
     """
     Test llm_batch with container isolation.
-    
+
     Verifies:
     - llm_batch works via IPC in containers
     - Multiple parallel sub-tasks execute correctly
     """
     if not is_container_available():
         pytest.skip("Docker not available, skipping container test")
-    
+
     provider = get_provider()
-    
+
     task = TaskSpec(
         task_id=f"container-batch-{uuid4().hex[:8]}",
         input_text=(
@@ -207,7 +210,7 @@ def test_rlm_container_isolation_llm_batch():
             min_word_count=20,
         ),
     )
-    
+
     engine = RLMEngine(
         isolation="container",
         max_steps=5,
@@ -215,15 +218,15 @@ def test_rlm_container_isolation_llm_batch():
         max_recursion_depth=1,
         subcall_max_steps=3,
     )
-    
+
     start_time = time.time()
     report = engine.run(task, provider, data="Context about AI")
     duration_ms = (time.time() - start_time) * 1000
-    
+
     assert report.success, f"RLM failed: {report.errors}"
     assert report.answer is not None, "No answer returned"
     assert len(report.answer) > 50, "Answer should be substantial"
-    
+
     print("✓ Container llm_batch test passed")
     print(f"  Duration: {duration_ms:.0f}ms")
     print(f"  Answer length: {len(report.answer)} chars")
@@ -232,6 +235,7 @@ def test_rlm_container_isolation_llm_batch():
 # =============================================================================
 # Scaling Tests - Multiple Concurrent Instances
 # =============================================================================
+
 
 def run_single_container_engine(
     instance_id: int,
@@ -250,9 +254,9 @@ def run_single_container_engine(
             error="Docker not available",
             isolation_mode=isolation_mode,
         )
-    
+
     provider = get_provider()
-    
+
     task = TaskSpec(
         task_id=f"concurrent-{isolation_mode}-{instance_id}-{uuid4().hex[:8]}",
         input_text=(
@@ -267,7 +271,7 @@ def run_single_container_engine(
             min_word_count=10,
         ),
     )
-    
+
     engine = RLMEngine(
         isolation=isolation_mode,
         max_steps=4,
@@ -275,14 +279,14 @@ def run_single_container_engine(
         max_recursion_depth=1,
         subcall_max_steps=2,
     )
-    
+
     start_time = time.time()
     try:
         report = engine.run(task, provider, data=f"Context about {topic}")
         duration_ms = (time.time() - start_time) * 1000
-        
+
         subcalls = len([s for s in report.steps if "llm_query" in str(s).lower()])
-        
+
         return ContainerTestResult(
             test_name=f"instance-{instance_id}",
             success=report.success,
@@ -308,7 +312,7 @@ def run_single_container_engine(
 def test_rlm_container_isolation_5_concurrent():
     """
     Test 5 concurrent RLM instances with container isolation.
-    
+
     Verifies:
     - Multiple containers can run simultaneously
     - IPC works correctly under concurrency
@@ -316,7 +320,7 @@ def test_rlm_container_isolation_5_concurrent():
     """
     if not is_container_available():
         pytest.skip("Docker not available, skipping container test")
-    
+
     topics = [
         "quantum computing",
         "blockchain technology",
@@ -325,9 +329,9 @@ def test_rlm_container_isolation_5_concurrent():
         "biotechnology",
     ]
     markers = [f"MARKER-{i:02d}-{uuid4().hex[:6]}" for i in range(5)]
-    
+
     from concurrent.futures import ThreadPoolExecutor
-    
+
     start_time = time.time()
     with ThreadPoolExecutor(max_workers=5) as executor:
         futures = [
@@ -341,13 +345,13 @@ def test_rlm_container_isolation_5_concurrent():
             for i in range(5)
         ]
         results = [f.result() for f in futures]
-    
+
     total_duration_ms = (time.time() - start_time) * 1000
-    
+
     # Analyze results
     successful = [r for r in results if r.success]
     failed = [r for r in results if not r.success]
-    
+
     # Check isolation: each marker should only appear in its own answer
     isolation_violations = 0
     for i, result in enumerate(results):
@@ -360,17 +364,21 @@ def test_rlm_container_isolation_5_concurrent():
         for j, other_marker in enumerate(markers):
             if i != j and other_marker in result.answer:
                 isolation_violations += 1
-    
+
     print("\n✓ 5 Concurrent Container Tests:")
     print(f"  Successful: {len(successful)}/5")
     print(f"  Failed: {len(failed)}/5")
     print(f"  Total duration: {total_duration_ms:.0f}ms")
     print(f"  Isolation violations: {isolation_violations}")
-    print(f"  Avg duration: {sum(r.duration_ms for r in successful) / len(successful) if successful else 0:.0f}ms")
-    
+    print(
+        f"  Avg duration: {sum(r.duration_ms for r in successful) / len(successful) if successful else 0:.0f}ms"
+    )
+
     assert len(successful) >= 4, f"Expected at least 4 successes, got {len(successful)}"
-    assert isolation_violations == 0, f"Found {isolation_violations} isolation violations"
-    
+    assert isolation_violations == 0, (
+        f"Found {isolation_violations} isolation violations"
+    )
+
     for result in failed:
         print(f"  Failed instance: {result.test_name} - {result.error}")
 
@@ -378,7 +386,7 @@ def test_rlm_container_isolation_5_concurrent():
 def test_rlm_subprocess_isolation_5_concurrent():
     """
     Test 5 concurrent RLM instances with subprocess isolation.
-    
+
     Verifies:
     - Multiple subprocesses can run simultaneously
     - IPC works correctly under concurrency
@@ -392,9 +400,9 @@ def test_rlm_subprocess_isolation_5_concurrent():
         "web development",
     ]
     markers = [f"MARKER-{i:02d}-{uuid4().hex[:6]}" for i in range(5)]
-    
+
     from concurrent.futures import ThreadPoolExecutor
-    
+
     start_time = time.time()
     with ThreadPoolExecutor(max_workers=5) as executor:
         futures = [
@@ -408,13 +416,13 @@ def test_rlm_subprocess_isolation_5_concurrent():
             for i in range(5)
         ]
         results = [f.result() for f in futures]
-    
+
     total_duration_ms = (time.time() - start_time) * 1000
-    
+
     # Analyze results
     successful = [r for r in results if r.success]
     failed = [r for r in results if not r.success]
-    
+
     # Check isolation
     isolation_violations = 0
     for i, result in enumerate(results):
@@ -425,21 +433,23 @@ def test_rlm_subprocess_isolation_5_concurrent():
         for j, other_marker in enumerate(markers):
             if i != j and other_marker in result.answer:
                 isolation_violations += 1
-    
+
     print("\n✓ 5 Concurrent Subprocess Tests:")
     print(f"  Successful: {len(successful)}/5")
     print(f"  Failed: {len(failed)}/5")
     print(f"  Total duration: {total_duration_ms:.0f}ms")
     print(f"  Isolation violations: {isolation_violations}")
-    
+
     assert len(successful) >= 4, f"Expected at least 4 successes, got {len(successful)}"
-    assert isolation_violations == 0, f"Found {isolation_violations} isolation violations"
+    assert isolation_violations == 0, (
+        f"Found {isolation_violations} isolation violations"
+    )
 
 
 def test_rlm_container_isolation_10_concurrent_stress():
     """
     Stress test: 10 concurrent RLM instances with container isolation.
-    
+
     Verifies:
     - System handles higher concurrency
     - IPC remains stable under load
@@ -447,7 +457,7 @@ def test_rlm_container_isolation_10_concurrent_stress():
     """
     if not is_container_available():
         pytest.skip("Docker not available, skipping container test")
-    
+
     topics = [
         "artificial intelligence",
         "quantum computing",
@@ -461,9 +471,9 @@ def test_rlm_container_isolation_10_concurrent_stress():
         "augmented reality",
     ]
     markers = [f"MARKER-{i:02d}-{uuid4().hex[:6]}" for i in range(10)]
-    
+
     from concurrent.futures import ThreadPoolExecutor
-    
+
     start_time = time.time()
     with ThreadPoolExecutor(max_workers=10) as executor:
         futures = [
@@ -477,13 +487,13 @@ def test_rlm_container_isolation_10_concurrent_stress():
             for i in range(10)
         ]
         results = [f.result() for f in futures]
-    
+
     total_duration_ms = (time.time() - start_time) * 1000
-    
+
     # Analyze results
     successful = [r for r in results if r.success]
     failed = [r for r in results if not r.success]
-    
+
     # Check isolation
     isolation_violations = 0
     for i, result in enumerate(results):
@@ -494,7 +504,7 @@ def test_rlm_container_isolation_10_concurrent_stress():
         for j, other_marker in enumerate(markers):
             if i != j and other_marker in result.answer:
                 isolation_violations += 1
-    
+
     print("\n✓ 10 Concurrent Container Stress Test:")
     print(f"  Successful: {len(successful)}/10")
     print(f"  Failed: {len(failed)}/10")
@@ -503,29 +513,32 @@ def test_rlm_container_isolation_10_concurrent_stress():
     if successful:
         avg_duration = sum(r.duration_ms for r in successful) / len(successful)
         print(f"  Avg duration: {avg_duration:.0f}ms")
-    
+
     # Allow some failures in stress test (80% success rate)
     assert len(successful) >= 8, f"Expected at least 8 successes, got {len(successful)}"
-    assert isolation_violations == 0, f"Found {isolation_violations} isolation violations"
+    assert isolation_violations == 0, (
+        f"Found {isolation_violations} isolation violations"
+    )
 
 
 # =============================================================================
 # Long/Short Running Task Tests
 # =============================================================================
 
+
 def test_rlm_container_isolation_short_task():
     """
     Test short-running task with container isolation.
-    
+
     Verifies:
     - Quick tasks complete successfully
     - IPC overhead is acceptable
     """
     if not is_container_available():
         pytest.skip("Docker not available, skipping container test")
-    
+
     provider = get_provider()
-    
+
     task = TaskSpec(
         task_id=f"container-short-{uuid4().hex[:8]}",
         input_text="What is 2+2? Just answer with the number.",
@@ -535,21 +548,21 @@ def test_rlm_container_isolation_short_task():
             required_substrings=["4"],
         ),
     )
-    
+
     engine = RLMEngine(
         isolation="container",
         max_steps=2,
         recursive_subcalls=False,  # No subcalls for short task
     )
-    
+
     start_time = time.time()
     report = engine.run(task, provider, data="")
     duration_ms = (time.time() - start_time) * 1000
-    
+
     assert report.success, f"RLM failed: {report.errors}"
     assert "4" in (report.answer or ""), f"Answer should contain '4': {report.answer}"
     assert duration_ms < 30000, f"Short task took too long: {duration_ms}ms"
-    
+
     print("✓ Short task test passed")
     print(f"  Duration: {duration_ms:.0f}ms")
     print(f"  Answer: {report.answer}")
@@ -558,7 +571,7 @@ def test_rlm_container_isolation_short_task():
 def test_rlm_container_isolation_long_task():
     """
     Test long-running task with container isolation and multiple sub-tasks.
-    
+
     Verifies:
     - Long tasks complete successfully
     - Multiple recursive sub-tasks work
@@ -566,9 +579,9 @@ def test_rlm_container_isolation_long_task():
     """
     if not is_container_available():
         pytest.skip("Docker not available, skipping container test")
-    
+
     provider = get_provider()
-    
+
     task = TaskSpec(
         task_id=f"container-long-{uuid4().hex[:8]}",
         input_text=(
@@ -585,7 +598,7 @@ def test_rlm_container_isolation_long_task():
             min_word_count=50,
         ),
     )
-    
+
     engine = RLMEngine(
         isolation="container",
         max_steps=8,
@@ -593,25 +606,29 @@ def test_rlm_container_isolation_long_task():
         max_recursion_depth=1,
         subcall_max_steps=3,
     )
-    
+
     start_time = time.time()
     report = engine.run(task, provider, data="Context about climate change")
     duration_ms = (time.time() - start_time) * 1000
-    
+
     subcalls = len([s for s in report.steps if "llm_query" in str(s).lower()])
-    
+
     assert report.success, f"RLM failed: {report.errors}"
     assert report.answer is not None, "No answer returned"
-    assert len(report.answer) > 100, f"Answer should be substantial: {len(report.answer)} chars"
+    assert len(report.answer) > 100, (
+        f"Answer should be substantial: {len(report.answer)} chars"
+    )
     assert subcalls >= 3, f"Should have made at least 3 subcalls, got {subcalls}"
-    
+
     print("✓ Long task test passed")
     print(f"  Duration: {duration_ms:.0f}ms")
     print(f"  Subcalls: {subcalls}")
     print(f"  Answer length: {len(report.answer)} chars")
 
 
-@pytest.mark.skip(reason="Long-running integration test - run manually with -m integration")
+@pytest.mark.skip(
+    reason="Long-running integration test - run manually with -m integration"
+)
 def test_rlm_subprocess_isolation_long_task():
     """
     Test long-running task with subprocess isolation and multiple sub-tasks.
@@ -619,7 +636,7 @@ def test_rlm_subprocess_isolation_long_task():
     Verifies subprocess isolation handles long tasks correctly.
     """
     provider = get_provider()
-    
+
     task = TaskSpec(
         task_id=f"subprocess-long-{uuid4().hex[:8]}",
         input_text=(
@@ -640,7 +657,7 @@ def test_rlm_subprocess_isolation_long_task():
             min_word_count=50,
         ),
     )
-    
+
     engine = RLMEngine(
         isolation="subprocess",
         max_steps=8,
@@ -648,18 +665,20 @@ def test_rlm_subprocess_isolation_long_task():
         max_recursion_depth=1,
         subcall_max_steps=3,
     )
-    
+
     start_time = time.time()
     report = engine.run(task, provider, data="Context about software architecture")
     duration_ms = (time.time() - start_time) * 1000
-    
+
     subcalls = len([s for s in report.steps if "llm_query" in str(s).lower()])
-    
+
     assert report.success, f"RLM failed: {report.errors}"
     assert report.answer is not None, "No answer returned"
-    assert len(report.answer) > 100, f"Answer should be substantial: {len(report.answer)} chars"
+    assert len(report.answer) > 100, (
+        f"Answer should be substantial: {len(report.answer)} chars"
+    )
     assert subcalls >= 3, f"Should have made at least 3 subcalls, got {subcalls}"
-    
+
     print("✓ Subprocess long task test passed")
     print(f"  Duration: {duration_ms:.0f}ms")
     print(f"  Subcalls: {subcalls}")

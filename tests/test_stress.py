@@ -274,6 +274,7 @@ class TestFailureInjector:
         injector = FailureInjector(scenario, run_index=0, seed=42)
 
         import time
+
         start = time.time()
         injector.inject()
         elapsed = time.time() - start
@@ -331,6 +332,7 @@ class TestRunScenarios:
 
     def test_error_scenario_captured(self):
         """Test that errors from fault injection are handled properly."""
+
         def task(injector):
             try:
                 injector.inject()  # May raise

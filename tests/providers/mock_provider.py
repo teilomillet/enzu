@@ -81,7 +81,7 @@ class MockProvider(BaseProvider):
         """Generate response for recursive sub-RLM calls."""
         # Extract key from SUBCALL:key pattern
         if subcall_prompt.startswith("SUBCALL:"):
-            key = subcall_prompt[len("SUBCALL:"):].strip()
+            key = subcall_prompt[len("SUBCALL:") :].strip()
         else:
             key = subcall_prompt
 
@@ -95,4 +95,4 @@ class MockProvider(BaseProvider):
             response = f"sub_response_for_{key}"
 
         # Return code that calls FINAL with the response (use repr for safe escaping)
-        return f'```python\nFINAL({repr(response)})\n```'
+        return f"```python\nFINAL({repr(response)})\n```"

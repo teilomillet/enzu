@@ -8,17 +8,25 @@ maintain complete isolation - no cross-contamination of:
 - Provider calls and responses
 - Budget tracking
 """
+
 from __future__ import annotations
 
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Any, Dict, List, Set
+from typing import Any, Dict, List
 from unittest.mock import patch
 
 
 from enzu import Session
-from enzu.models import Budget, BudgetUsage, RLMExecutionReport, RLMStep, SuccessCriteria, TaskSpec
+from enzu.models import (
+    Budget,
+    BudgetUsage,
+    RLMExecutionReport,
+    RLMStep,
+    SuccessCriteria,
+    TaskSpec,
+)
 from enzu.runtime import (
     DistributedRuntime,
     LocalWorker,
@@ -41,7 +49,8 @@ def create_session_mock_run(responses: Dict[int, str]):
     def mock_run(self, spec, provider, data, options):
         # Try to extract user_id from the input text
         import re
-        match = re.search(r'user (\d+)', spec.input_text)
+
+        match = re.search(r"user (\d+)", spec.input_text)
         user_id = int(match.group(1)) if match else call_count[0]
         call_count[0] += 1
 
@@ -53,7 +62,16 @@ def create_session_mock_run(responses: Dict[int, str]):
             provider="mock",
             model="mock",
             answer=answer,
-            steps=[RLMStep(step_index=0, prompt="p", model_output="o", code="c", stdout="s", error=None)],
+            steps=[
+                RLMStep(
+                    step_index=0,
+                    prompt="p",
+                    model_output="o",
+                    code="c",
+                    stdout="s",
+                    error=None,
+                )
+            ],
             budget_usage=BudgetUsage(
                 elapsed_seconds=0.1,
                 input_tokens=10,
@@ -64,11 +82,13 @@ def create_session_mock_run(responses: Dict[int, str]):
             ),
             errors=[],
         )
+
     return mock_run
 
 
 def create_simple_mock_run(answer: str = "done"):
     """Create a simple mock LocalRuntime.run that returns a fixed answer."""
+
     def mock_run(self, spec, provider, data, options):
         return RLMExecutionReport(
             success=True,
@@ -76,7 +96,16 @@ def create_simple_mock_run(answer: str = "done"):
             provider="mock",
             model="mock",
             answer=answer,
-            steps=[RLMStep(step_index=0, prompt="p", model_output="o", code="c", stdout="s", error=None)],
+            steps=[
+                RLMStep(
+                    step_index=0,
+                    prompt="p",
+                    model_output="o",
+                    code="c",
+                    stdout="s",
+                    error=None,
+                )
+            ],
             budget_usage=BudgetUsage(
                 elapsed_seconds=0.1,
                 input_tokens=10,
@@ -87,6 +116,7 @@ def create_simple_mock_run(answer: str = "done"):
             ),
             errors=[],
         )
+
     return mock_run
 
 
@@ -192,7 +222,8 @@ class TestMultiUserSessionIsolation:
 
         def mock_run(self, spec, provider, data, options):
             import re
-            match = re.search(r'user (\d+)', spec.input_text)
+
+            match = re.search(r"user (\d+)", spec.input_text)
             user_id = int(match.group(1)) if match else 0
             task_num = "1" if "Task 1" in spec.input_text else "2"
 
@@ -202,7 +233,16 @@ class TestMultiUserSessionIsolation:
                 provider="mock",
                 model="mock",
                 answer=f"Response {task_num} for user {user_id}",
-                steps=[RLMStep(step_index=0, prompt="p", model_output="o", code="c", stdout="s", error=None)],
+                steps=[
+                    RLMStep(
+                        step_index=0,
+                        prompt="p",
+                        model_output="o",
+                        code="c",
+                        stdout="s",
+                        error=None,
+                    )
+                ],
                 budget_usage=BudgetUsage(
                     elapsed_seconds=0.1,
                     input_tokens=10,
@@ -214,7 +254,7 @@ class TestMultiUserSessionIsolation:
                 errors=[],
             )
 
-        with patch.object(LocalRuntime, 'run', mock_run):
+        with patch.object(LocalRuntime, "run", mock_run):
             for user_id in range(num_users):
                 session = Session(model="mock", max_cost_usd=100.0)
                 result1 = session.run(f"Task 1 from user {user_id}", cost=1.0)
@@ -224,14 +264,18 @@ class TestMultiUserSessionIsolation:
 
         # Verify isolation: each user's history contains ONLY their own exchanges
         for user_id, session in user_sessions.items():
-            assert len(session.exchanges) == 2, f"User {user_id} should have 2 exchanges"
+            assert len(session.exchanges) == 2, (
+                f"User {user_id} should have 2 exchanges"
+            )
 
             # Verify exchange content belongs to this user
             for i, exchange in enumerate(session.exchanges):
-                assert f"user {user_id}" in exchange.user, \
+                assert f"user {user_id}" in exchange.user, (
                     f"User {user_id} exchange {i} has wrong user prompt: {exchange.user}"
-                assert f"user {user_id}" in exchange.assistant, \
+                )
+                assert f"user {user_id}" in exchange.assistant, (
                     f"User {user_id} exchange {i} has wrong response: {exchange.assistant}"
+                )
 
             # Verify no other user's data leaked in
             for other_id in range(num_users):
@@ -246,7 +290,7 @@ class TestMultiUserSessionIsolation:
 
         user_sessions: Dict[int, Session] = {}
 
-        with patch.object(LocalRuntime, 'run', create_simple_mock_run("done")):
+        with patch.object(LocalRuntime, "run", create_simple_mock_run("done")):
             # Each user runs a different number of tasks (user_id + 1 tasks)
             for user_id in range(num_users):
                 num_runs = user_id + 1
@@ -258,8 +302,9 @@ class TestMultiUserSessionIsolation:
         # Verify each user's budget is tracked independently
         for user_id, session in user_sessions.items():
             expected_exchanges = user_id + 1
-            assert len(session.exchanges) == expected_exchanges, \
+            assert len(session.exchanges) == expected_exchanges, (
                 f"User {user_id} should have {expected_exchanges} exchanges"
+            )
 
 
 # =============================================================================
@@ -315,10 +360,12 @@ class TestMultiUserRuntimeIsolation:
             assert len(results) == tasks_per_user
             for i, result in enumerate(results):
                 expected_task_id = f"user{user_id}_task{i}"
-                assert result.task_id == expected_task_id, \
+                assert result.task_id == expected_task_id, (
                     f"User {user_id} got wrong task_id: {result.task_id}"
-                assert result.answer is not None and f"user{user_id}" in result.answer, \
-                    f"User {user_id} got wrong answer: {result.answer}"
+                )
+                assert (
+                    result.answer is not None and f"user{user_id}" in result.answer
+                ), f"User {user_id} got wrong answer: {result.answer}"
 
         # Verify total task count
         assert len(worker.received_tasks) == num_users * tasks_per_user
@@ -412,10 +459,12 @@ class TestCrossComponentIsolation:
 
         for session_id in range(num_sessions):
             # Each session gets unique mock responses
-            provider = MockProvider(main_outputs=[
-                f'```python\nFINAL("Session {session_id} response 1")\n```',
-                f'```python\nFINAL("Session {session_id} response 2")\n```',
-            ])
+            provider = MockProvider(
+                main_outputs=[
+                    f'```python\nFINAL("Session {session_id} response 1")\n```',
+                    f'```python\nFINAL("Session {session_id} response 2")\n```',
+                ]
+            )
             session = Session(model="mock", provider=provider)
             r1 = session.run(f"Query 1 from session {session_id}", cost=1.0)
             r2 = session.run(f"Query 2 from session {session_id}", cost=1.0)
@@ -424,18 +473,16 @@ class TestCrossComponentIsolation:
         # Verify each session got only its own responses
         for session_id, results in session_results.items():
             for result in results:
-                assert f"Session {session_id}" in result, \
+                assert f"Session {session_id}" in result, (
                     f"Session {session_id} got wrong response: {result}"
+                )
 
     def test_provider_call_isolation(self):
         """Provider calls are correctly routed per-user."""
         num_users = 5
 
         provider = UserIdTrackingProvider(
-            main_outputs=[
-                '```python\nFINAL("done")\n```'
-                for _ in range(num_users * 2)
-            ]
+            main_outputs=['```python\nFINAL("done")\n```' for _ in range(num_users * 2)]
         )
 
         def run_user_call(user_id: int):
@@ -497,9 +544,9 @@ class TestStateLeakageDetection:
         sessions: List[Session] = []
 
         for i in range(5):
-            provider = MockProvider(main_outputs=[
-                f'```python\nFINAL("Response {i}")\n```'
-            ])
+            provider = MockProvider(
+                main_outputs=[f'```python\nFINAL("Response {i}")\n```']
+            )
             session = Session(model="mock", provider=provider)
             session.run(f"Task {i}", cost=1.0)
             sessions.append(session)
@@ -559,8 +606,10 @@ class TestMultiUserStress:
 
         assert not errors, f"Errors occurred: {errors[:5]}..."
         assert len(results) == num_users
-        print(f"\nBurst test: {num_users} users completed in {elapsed:.2f}s "
-              f"({num_users/elapsed:.1f} users/sec)")
+        print(
+            f"\nBurst test: {num_users} users completed in {elapsed:.2f}s "
+            f"({num_users / elapsed:.1f} users/sec)"
+        )
 
     def test_sustained_multiuser_load(self):
         """Sustained load from multiple users over time."""
@@ -588,12 +637,16 @@ class TestMultiUserStress:
 
         start = time.monotonic()
         with ThreadPoolExecutor(max_workers=num_users) as executor:
-            futures = [executor.submit(user_sustained_load, i) for i in range(num_users)]
+            futures = [
+                executor.submit(user_sustained_load, i) for i in range(num_users)
+            ]
             for f in as_completed(futures, timeout=120.0):
                 f.result()
         elapsed = time.monotonic() - start
 
         total_requests = num_users * requests_per_user
         assert sum(completed_by_user.values()) == total_requests
-        print(f"\nSustained test: {total_requests} requests in {elapsed:.2f}s "
-              f"({total_requests/elapsed:.1f} req/sec)")
+        print(
+            f"\nSustained test: {total_requests} requests in {elapsed:.2f}s "
+            f"({total_requests / elapsed:.1f} req/sec)"
+        )

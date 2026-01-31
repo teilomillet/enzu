@@ -11,6 +11,7 @@ This test actually starts the server and makes real API calls to verify:
 Usage:
     uv run python tests/test_real_concurrency.py
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -42,6 +43,7 @@ TIMEOUT = 180.0  # Generous timeout for LLM calls
 @dataclass
 class UserSession:
     """Tracks a user's session and results."""
+
     user_id: int
     marker: str = field(default_factory=lambda: "")
     session_id: Optional[str] = None
@@ -54,7 +56,11 @@ class UserSession:
 
     @property
     def success(self) -> bool:
-        return self.session_id is not None and len(self.errors) == 0 and len(self.responses) > 0
+        return (
+            self.session_id is not None
+            and len(self.errors) == 0
+            and len(self.responses) > 0
+        )
 
 
 async def run_user_session(
@@ -73,7 +79,9 @@ async def run_user_session(
             timeout=TIMEOUT,
         )
         if resp.status_code != 200:
-            user.errors.append(f"Session creation failed: {resp.status_code} - {resp.text}")
+            user.errors.append(
+                f"Session creation failed: {resp.status_code} - {resp.text}"
+            )
             return user
 
         user.session_id = resp.json()["session_id"]
@@ -92,7 +100,9 @@ async def run_user_session(
             )
 
             if resp.status_code != 200:
-                user.errors.append(f"Turn {turn}: {resp.status_code} - {resp.text[:200]}")
+                user.errors.append(
+                    f"Turn {turn}: {resp.status_code} - {resp.text[:200]}"
+                )
                 continue
 
             answer = resp.json().get("answer", "")
@@ -102,7 +112,9 @@ async def run_user_session(
             if user.marker in answer:
                 print(f"  User {user.user_id} Turn {turn}: OK - marker found")
             else:
-                print(f"  User {user.user_id} Turn {turn}: WARNING - marker NOT in response")
+                print(
+                    f"  User {user.user_id} Turn {turn}: WARNING - marker NOT in response"
+                )
                 user.errors.append(f"Turn {turn}: Marker not in response")
 
     except Exception as e:
@@ -154,10 +166,11 @@ async def main():
 
     # Run all users concurrently using ASGI transport (no separate server needed)
     transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test", timeout=TIMEOUT) as client:
+    async with AsyncClient(
+        transport=transport, base_url="http://test", timeout=TIMEOUT
+    ) as client:
         tasks = [
-            run_user_session(user, client, MODEL, PROVIDER, NUM_TURNS)
-            for user in users
+            run_user_session(user, client, MODEL, PROVIDER, NUM_TURNS) for user in users
         ]
         users = await asyncio.gather(*tasks)
 
@@ -174,9 +187,9 @@ async def main():
     print(f"  Total users:       {NUM_USERS}")
     print(f"  Successful:        {len(successful)}")
     print(f"  Failed:            {len(failed)}")
-    print(f"  Success rate:      {len(successful)/NUM_USERS:.1%}")
+    print(f"  Success rate:      {len(successful) / NUM_USERS:.1%}")
     print(f"  Total time:        {elapsed:.1f}s")
-    print(f"  Avg per user:      {elapsed/NUM_USERS:.2f}s")
+    print(f"  Avg per user:      {elapsed / NUM_USERS:.2f}s")
     print("-" * 70)
     print("  ISOLATION CHECK")
     print("-" * 70)
@@ -206,7 +219,9 @@ async def main():
     if failed:
         print("\n  FAILED USERS:")
         for user in failed[:5]:
-            print(f"    User {user.user_id}: {user.errors[0] if user.errors else 'Unknown error'}")
+            print(
+                f"    User {user.user_id}: {user.errors[0] if user.errors else 'Unknown error'}"
+            )
         if len(failed) > 5:
             print(f"    ... and {len(failed) - 5} more")
 
@@ -229,7 +244,9 @@ async def main():
                             found_other = True
                             print(f"      CONTAMINATION: Found {other.marker}!")
                     if not found_other:
-                        print("      No other user's marker found - just LLM output variation")
+                        print(
+                            "      No other user's marker found - just LLM output variation"
+                        )
                     shown += 1
 
     # Final verdict - isolation is the key metric
@@ -238,7 +255,9 @@ async def main():
         print("  PASS - No cross-contamination detected!")
         print("  Session isolation is working correctly under concurrent load.")
         if marker_missing > 0:
-            print(f"  Note: {marker_missing} responses didn't echo marker (LLM behavior, not isolation issue)")
+            print(
+                f"  Note: {marker_missing} responses didn't echo marker (LLM behavior, not isolation issue)"
+            )
         print("=" * 70)
         return 0
     else:

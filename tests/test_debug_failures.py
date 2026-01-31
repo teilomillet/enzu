@@ -4,6 +4,7 @@ Debug test to understand why some responses don't contain the expected marker.
 
 Runs a smaller test with detailed logging to investigate failures.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -56,7 +57,9 @@ async def run_user_session(
             timeout=TIMEOUT,
         )
         if resp.status_code != 200:
-            user.errors.append(f"Session creation failed: {resp.status_code} - {resp.text}")
+            user.errors.append(
+                f"Session creation failed: {resp.status_code} - {resp.text}"
+            )
             return user
 
         session_data = resp.json()
@@ -122,7 +125,9 @@ async def main():
     start_time = time.time()
 
     transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test", timeout=TIMEOUT) as client:
+    async with AsyncClient(
+        transport=transport, base_url="http://test", timeout=TIMEOUT
+    ) as client:
         tasks = [run_user_session(user, client) for user in users]
         users = await asyncio.gather(*tasks)
 
@@ -145,13 +150,15 @@ async def main():
                 marker_found += 1
             elif resp.get("status_code") == 200:
                 marker_missing += 1
-                failures.append({
-                    "user_id": user.user_id,
-                    "marker": user.marker,
-                    "turn": resp["turn"],
-                    "answer": resp.get("answer", ""),
-                    "task": resp["task"],
-                })
+                failures.append(
+                    {
+                        "user_id": user.user_id,
+                        "marker": user.marker,
+                        "turn": resp["turn"],
+                        "answer": resp.get("answer", ""),
+                        "task": resp["task"],
+                    }
+                )
 
     print(f"\nTotal responses: {total_responses}")
     print(f"Marker found: {marker_found}")
@@ -164,21 +171,21 @@ async def main():
         print("-" * 80)
 
         for i, f in enumerate(failures):
-            print(f"\n{'='*60}")
-            print(f"FAILURE #{i+1}: User {f['user_id']}, Turn {f['turn']}")
-            print(f"{'='*60}")
+            print(f"\n{'=' * 60}")
+            print(f"FAILURE #{i + 1}: User {f['user_id']}, Turn {f['turn']}")
+            print(f"{'=' * 60}")
             print(f"Expected marker: {f['marker']}")
             print(f"Task sent: {f['task']}")
             print(f"\nFULL RESPONSE ({len(f['answer'])} chars):")
             print("-" * 40)
-            print(f['answer'])
+            print(f["answer"])
             print("-" * 40)
 
             # Analyze what went wrong
-            answer = f['answer']
+            answer = f["answer"]
             if len(answer) == 0:
                 print("ISSUE: Empty response")
-            elif f['marker'] in answer:
+            elif f["marker"] in answer:
                 print("ISSUE: Marker IS in response (detection bug?)")
             else:
                 # Check if it's close
@@ -186,12 +193,15 @@ async def main():
                     print("ISSUE: Contains 'USER' but not the exact marker")
                     # Find what USER string is there
                     import re
-                    user_matches = re.findall(r'USER\d+-[a-f0-9]+', answer)
+
+                    user_matches = re.findall(r"USER\d+-[a-f0-9]+", answer)
                     if user_matches:
                         print(f"  Found: {user_matches}")
                         for m in user_matches:
-                            if m != f['marker']:
-                                print(f"  CROSS-CONTAMINATION? Found {m} instead of {f['marker']}")
+                            if m != f["marker"]:
+                                print(
+                                    f"  CROSS-CONTAMINATION? Found {m} instead of {f['marker']}"
+                                )
                 elif "FINAL" in answer:
                     print("ISSUE: Response contains FINAL but marker not extracted")
                 elif len(answer) < 50:
@@ -214,7 +224,9 @@ async def main():
             answer = resp.get("answer", "")
             for other_marker in all_markers:
                 if other_marker != user.marker and other_marker in answer:
-                    print(f"CONTAMINATION: User {user.user_id}'s response contains {other_marker}")
+                    print(
+                        f"CONTAMINATION: User {user.user_id}'s response contains {other_marker}"
+                    )
                     contamination_found = True
 
     if not contamination_found:

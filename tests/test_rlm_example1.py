@@ -41,15 +41,17 @@ FINAL(summary)
         "synthesize*": "Albert Einstein, 1921, Cuban Missile Crisis",
     }
     # Fallback output in case budget is exhausted during step 1
-    fallback_output = '```python\nFINAL("Albert Einstein, 1921, Cuban Missile Crisis")\n```'
-    provider = MockProvider(main_outputs=[model_output, fallback_output], subcall_responses=subcalls)
+    fallback_output = (
+        '```python\nFINAL("Albert Einstein, 1921, Cuban Missile Crisis")\n```'
+    )
+    provider = MockProvider(
+        main_outputs=[model_output, fallback_output], subcall_responses=subcalls
+    )
     budget = Budget(max_tokens=120, max_total_tokens=300)
     criteria = SuccessCriteria(required_substrings=["Albert Einstein"])
     task = TaskSpec(
         task_id="example1",
-        input_text=(
-            "Find the scientist, Nobel year, and crisis name from the data."
-        ),
+        input_text=("Find the scientist, Nobel year, and crisis name from the data."),
         model="mock-model",
         budget=budget,
         success_criteria=criteria,
@@ -74,9 +76,7 @@ def test_rlm_example1_integration() -> None:
     model = os.getenv("OPENROUTER_MODEL", "openai/gpt-4o-mini")
     task = TaskSpec(
         task_id="example1-live",
-        input_text=(
-            "Find the scientist, Nobel year, and crisis name from the data."
-        ),
+        input_text=("Find the scientist, Nobel year, and crisis name from the data."),
         model=model,
         budget=budget,
         success_criteria=criteria,

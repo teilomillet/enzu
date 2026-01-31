@@ -114,7 +114,9 @@ class StepRunner:
             from enzu.rlm.context_metrics import ContextBreakdown
 
             # Extract context information
-            task_prompt_chars = len(self._task.input_text) if self._task.input_text else 0
+            task_prompt_chars = (
+                len(self._task.input_text) if self._task.input_text else 0
+            )
 
             # System prompt tokens (if tracked)
             system_prompt_tokens = self._system_prompt_tokens or 0
@@ -137,6 +139,7 @@ class StepRunner:
             if has_context_file and self._context_path:
                 try:
                     from pathlib import Path
+
                     context_file = Path(self._context_path)
                     if context_file.exists():
                         file_data_chars = len(context_file.read_text())

@@ -1,6 +1,7 @@
 """
 Focused tests for RLMEngine core behaviors.
 """
+
 from __future__ import annotations
 
 import json
@@ -365,10 +366,14 @@ def test_rlm_verify_on_final_false_defers_failure() -> None:
 
     assert report.answer == "bad"
     assert report.success is False
-    assert any("verification_failed:missing_substring:good" in err for err in report.errors)
+    assert any(
+        "verification_failed:missing_substring:good" in err for err in report.errors
+    )
 
 
-def test_rlm_tokenizer_unavailable_uses_conservative_estimate(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_rlm_tokenizer_unavailable_uses_conservative_estimate(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     # When tokenizer unavailable and model is not mock, use conservative estimates.
     # For mock models, no estimation is done (controlled test environment).
     provider = MockProvider(main_outputs=["```python\nFINAL('ok')\n```"])
@@ -385,7 +390,9 @@ def test_rlm_tokenizer_unavailable_uses_conservative_estimate(monkeypatch: pytes
     assert report.answer == "ok"
 
 
-def test_rlm_budget_notice_added_on_large_clamp(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_rlm_budget_notice_added_on_large_clamp(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     # Covers budget_notice path in _advance_prompt when clamp is large.
     provider = MockProvider(main_outputs=["```python\nFINAL('ok')\n```"])
     task = _make_task(
@@ -675,17 +682,23 @@ async def test_rlm_llm_batch_fallback_in_running_loop() -> None:
 
 def test_context_grew_when_before_none() -> None:
     # Covers _context_grew branch when no snapshot exists.
-    assert _context_grew(None, {"num_sources": 0, "num_queries": 0, "total_text_chars": 0}) is False
-    assert _context_grew(None, {"num_sources": 1, "num_queries": 0, "total_text_chars": 0}) is True
+    assert (
+        _context_grew(None, {"num_sources": 0, "num_queries": 0, "total_text_chars": 0})
+        is False
+    )
+    assert (
+        _context_grew(None, {"num_sources": 1, "num_queries": 0, "total_text_chars": 0})
+        is True
+    )
 
 
 def test_rlm_salvages_final_from_code_on_error() -> None:
     """FINAL() should be salvaged from code when sandbox execution fails."""
     # Code that has FINAL() but also a syntax error before it completes
-    error_code = '''```python
+    error_code = """```python
 result = broken_function(
 FINAL("The answer is 42 based on detailed analysis")
-```'''
+```"""
     provider = MockProvider(main_outputs=[error_code])
     task = _make_task(
         required_substrings=["42"],
@@ -702,10 +715,10 @@ FINAL("The answer is 42 based on detailed analysis")
 def test_rlm_salvages_answer_when_max_steps_reached() -> None:
     """Should salvage answer when max_steps reached without FINAL()."""
     # Model produces code that sets a result variable but never calls FINAL
-    code_output = '''```python
+    code_output = """```python
 result = "computed answer with important data"
 print(result)
-```'''
+```"""
     provider = MockProvider(main_outputs=[code_output, code_output])  # Two steps
     task = _make_task(
         min_word_count=1,
@@ -723,10 +736,10 @@ print(result)
 def test_rlm_salvages_from_truncated_code_block() -> None:
     """FINAL() should be salvaged from truncated (unclosed) code block."""
     # Simulates max_output_tokens cutting off the output mid-code-block
-    truncated_output = '''```python
+    truncated_output = """```python
 data = analyze_context(context)
 summary = generate_summary(data)
-FINAL("Analysis complete: found 3 key insights about the topic'''
+FINAL("Analysis complete: found 3 key insights about the topic"""
     # Note: missing closing quote, paren, and ``` - simulating truncation
 
     provider = MockProvider(main_outputs=[truncated_output])
@@ -741,4 +754,3 @@ FINAL("Analysis complete: found 3 key insights about the topic'''
     # Should detect truncation and salvage the partial FINAL content
     assert report.answer is not None
     assert "Analysis complete" in report.answer or "insights" in report.answer.lower()
-

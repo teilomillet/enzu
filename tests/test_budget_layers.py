@@ -12,6 +12,7 @@ Tests verify:
 - Budget exceptions propagate correctly
 - Budget state is isolated between sessions/tasks
 """
+
 from __future__ import annotations
 
 import threading
@@ -21,7 +22,13 @@ from typing import Dict, List, Optional
 import pytest
 
 from enzu import Session, SessionBudgetExceeded
-from enzu.models import Budget, BudgetUsage, RLMExecutionReport, SuccessCriteria, TaskSpec
+from enzu.models import (
+    Budget,
+    BudgetUsage,
+    RLMExecutionReport,
+    SuccessCriteria,
+    TaskSpec,
+)
 from enzu.runtime import (
     DistributedRuntime,
     LocalWorker,
@@ -85,7 +92,9 @@ def make_report(
 class ConfigurableCostWorker(LocalWorker):
     """Worker that returns configurable cost per task."""
 
-    def __init__(self, cost_per_task: float = 0.01, tokens_per_task: int = 100, **kwargs):
+    def __init__(
+        self, cost_per_task: float = 0.01, tokens_per_task: int = 100, **kwargs
+    ):
         super().__init__(**kwargs)
         self.cost_per_task = cost_per_task
         self.tokens_per_task = tokens_per_task
@@ -153,9 +162,9 @@ class TestSessionBudgetLayer:
 
     def test_session_budget_tracking_accumulates(self):
         """Session accurately tracks cumulative usage."""
-        provider = MockProvider(main_outputs=[
-            '```python\nFINAL("done")\n```' for _ in range(5)
-        ])
+        provider = MockProvider(
+            main_outputs=['```python\nFINAL("done")\n```' for _ in range(5)]
+        )
 
         session = Session(model="mock", provider=provider)
 
@@ -368,10 +377,12 @@ class TestBudgetStateIsolation:
         """Multiple sessions track budgets independently."""
         sessions = []
         for i in range(3):
-            provider = MockProvider(main_outputs=[
-                '```python\nFINAL("done")\n```' for _ in range(5)
-            ])
-            session = Session(model="mock", provider=provider, max_cost_usd=float(i + 1))
+            provider = MockProvider(
+                main_outputs=['```python\nFINAL("done")\n```' for _ in range(5)]
+            )
+            session = Session(
+                model="mock", provider=provider, max_cost_usd=float(i + 1)
+            )
             sessions.append(session)
 
             for j in range(i + 1):
@@ -422,9 +433,9 @@ class TestBudgetStateIsolation:
         results: Dict[int, Dict] = {}
 
         for session_id in range(num_sessions):
-            provider = MockProvider(main_outputs=[
-                '```python\nFINAL("done")\n```' for _ in range(10)
-            ])
+            provider = MockProvider(
+                main_outputs=['```python\nFINAL("done")\n```' for _ in range(10)]
+            )
 
             session = Session(model="mock", provider=provider, max_cost_usd=1.0)
 
@@ -587,9 +598,9 @@ class TestBudgetResetAndCleanup:
 
     def test_session_clear_preserves_budget_tracking(self):
         """Session.clear() preserves budget tracking."""
-        provider = MockProvider(main_outputs=[
-            '```python\nFINAL("done")\n```' for _ in range(10)
-        ])
+        provider = MockProvider(
+            main_outputs=['```python\nFINAL("done")\n```' for _ in range(10)]
+        )
 
         session = Session(model="mock", provider=provider, max_cost_usd=10.0)
 

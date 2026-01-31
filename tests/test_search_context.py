@@ -6,7 +6,14 @@ from typing import Any, Dict, List, Tuple
 
 from enzu.tools import exa
 from enzu.tools.context import ctx_add, ctx_clear, ctx_get, ctx_sources, ctx_stats
-from enzu.tools.exa import ExaResult, exa_contents, exa_cost, exa_reset_cost, exa_search, exa_similar
+from enzu.tools.exa import (
+    ExaResult,
+    exa_contents,
+    exa_cost,
+    exa_reset_cost,
+    exa_search,
+    exa_similar,
+)
 from enzu.tools.research import research
 
 # Get the actual module object (not the function that shadows it in __init__.py)
@@ -191,7 +198,9 @@ def test_research_handles_none_scores(monkeypatch) -> None:
     monkeypatch.setattr(research_module, "_papers_fn", None)
     monkeypatch.setattr(research_module, "_similar_fn", None)
 
-    result = research("none-score", include_news=False, include_papers=False, min_score=0.0)
+    result = research(
+        "none-score", include_news=False, include_papers=False, min_score=0.0
+    )
 
     assert result["stats"]["kept"] == 1
     sources = ctx_sources()

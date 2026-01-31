@@ -11,6 +11,7 @@ Tests cover:
 7. Edge cases and robustness
 8. Thread safety
 """
+
 from __future__ import annotations
 
 import threading
@@ -38,6 +39,7 @@ from tests.providers.mock_provider import MockProvider
 # =============================================================================
 # BudgetController Tests
 # =============================================================================
+
 
 class TestBudgetControllerInit:
     """Test BudgetController initialization."""
@@ -250,6 +252,7 @@ class TestBudgetControllerSerialization:
 # Token Counting Tests
 # =============================================================================
 
+
 class TestTokenCounting:
     """Test token counting utilities."""
 
@@ -343,6 +346,7 @@ class TestEncodingSelection:
 # TokenBudgetPool Tests
 # =============================================================================
 
+
 class TestTokenBudgetPool:
     """Test RLM token reservation system."""
 
@@ -362,7 +366,9 @@ class TestTokenBudgetPool:
 
     def test_reserve_basic(self) -> None:
         pool = TokenBudgetPool(max_total_tokens=1000)
-        output_cap, reserved = pool.reserve(prompt_tokens=100, requested_output_tokens=200)
+        output_cap, reserved = pool.reserve(
+            prompt_tokens=100, requested_output_tokens=200
+        )
 
         assert output_cap == 200  # Full request granted
         assert reserved == 300  # prompt + output
@@ -373,7 +379,9 @@ class TestTokenBudgetPool:
 
     def test_reserve_capped_by_remaining(self) -> None:
         pool = TokenBudgetPool(max_total_tokens=500)
-        output_cap, reserved = pool.reserve(prompt_tokens=400, requested_output_tokens=200)
+        output_cap, reserved = pool.reserve(
+            prompt_tokens=400, requested_output_tokens=200
+        )
 
         # Only 100 tokens remaining after prompt
         assert output_cap == 100
@@ -381,14 +389,18 @@ class TestTokenBudgetPool:
 
     def test_reserve_no_room_for_output(self) -> None:
         pool = TokenBudgetPool(max_total_tokens=500)
-        output_cap, reserved = pool.reserve(prompt_tokens=500, requested_output_tokens=200)
+        output_cap, reserved = pool.reserve(
+            prompt_tokens=500, requested_output_tokens=200
+        )
 
         assert output_cap == 0
         assert reserved == 0
 
     def test_reserve_unlimited(self) -> None:
         pool = TokenBudgetPool(max_total_tokens=None)
-        output_cap, reserved = pool.reserve(prompt_tokens=1000, requested_output_tokens=500)
+        output_cap, reserved = pool.reserve(
+            prompt_tokens=1000, requested_output_tokens=500
+        )
 
         assert output_cap == 500  # Full request
         assert reserved == 0  # No reservation needed when unlimited
@@ -458,6 +470,7 @@ class TestTokenBudgetPool:
 # BudgetTracker Tests
 # =============================================================================
 
+
 class TestBudgetTracker:
     """Test multi-dimensional budget tracking."""
 
@@ -523,6 +536,7 @@ class TestBudgetTracker:
 # =============================================================================
 # Budget Model Validation Tests
 # =============================================================================
+
 
 class TestBudgetModelValidation:
     """Test Budget model validation rules."""
@@ -592,6 +606,7 @@ class TestLimitsModel:
 # Engine Preflight Tests
 # =============================================================================
 
+
 class TestEnginePreflight:
     """Test Engine budget preflight checks."""
 
@@ -632,19 +647,20 @@ class TestEnginePreflight:
 # Integration Tests
 # =============================================================================
 
+
 class TestBudgetIntegration:
     """Integration tests for budget enforcement."""
 
     def test_rlm_exhausts_budget_mid_task(self) -> None:
         """RLM should stop when budget exhausted during execution."""
-        model_output = '''
+        model_output = """
 ```python
 first = llm_query("SUBCALL:first")
 print(first)
 second = llm_query("SUBCALL:second")
 print(second)
 ```
-'''.strip()
+""".strip()
         provider = MockProvider(
             main_outputs=[model_output],
             subcall_responses={"first": "ok"},
@@ -688,6 +704,7 @@ print(second)
 # =============================================================================
 # Thread Safety Tests
 # =============================================================================
+
 
 class TestBudgetThreadSafety:
     """Test thread safety of budget components."""
@@ -740,6 +757,7 @@ class TestBudgetThreadSafety:
 # Edge Cases and Robustness
 # =============================================================================
 
+
 class TestBudgetEdgeCases:
     """Test edge cases and boundary conditions."""
 
@@ -774,11 +792,15 @@ class TestBudgetEdgeCases:
         """Exhausted pool should return 0 for output_cap."""
         pool = TokenBudgetPool(max_total_tokens=100)
         # Reserve 50 prompt + 50 output = 100 tokens
-        output_cap, reserved = pool.reserve(prompt_tokens=50, requested_output_tokens=50)
+        output_cap, reserved = pool.reserve(
+            prompt_tokens=50, requested_output_tokens=50
+        )
         assert reserved == 100  # Pool now fully reserved
 
         # Second reserve should fail - no remaining capacity
-        output_cap2, reserved2 = pool.reserve(prompt_tokens=10, requested_output_tokens=50)
+        output_cap2, reserved2 = pool.reserve(
+            prompt_tokens=10, requested_output_tokens=50
+        )
         assert output_cap2 == 0
         assert reserved2 == 0
 
@@ -848,6 +870,7 @@ class TestBudgetUsageModel:
 # =============================================================================
 # Robustness Tests
 # =============================================================================
+
 
 class TestBudgetRobustness:
     """Robustness tests for enterprise deployment."""

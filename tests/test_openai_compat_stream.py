@@ -129,4 +129,6 @@ def test_stream_chat_completions_falls_back_when_no_delta() -> None:
 
     assert result.output_text == "fallback"
     assert any(kwargs.get("stream") for kwargs in client.chat.completions.kwargs_list)
-    assert any(not kwargs.get("stream") for kwargs in client.chat.completions.kwargs_list)
+    assert any(
+        not kwargs.get("stream") for kwargs in client.chat.completions.kwargs_list
+    )

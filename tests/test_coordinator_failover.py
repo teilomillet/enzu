@@ -8,6 +8,7 @@ gracefully:
 - Task rerouting when nodes fail
 - Graceful degradation under partial failures
 """
+
 from __future__ import annotations
 
 import threading
@@ -18,7 +19,13 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import pytest
 
-from enzu.models import Budget, BudgetUsage, RLMExecutionReport, SuccessCriteria, TaskSpec
+from enzu.models import (
+    Budget,
+    BudgetUsage,
+    RLMExecutionReport,
+    SuccessCriteria,
+    TaskSpec,
+)
 from enzu.runtime import (
     DistributedRuntime,
     LocalWorker,
@@ -164,7 +171,8 @@ class CircuitBreakerWorker(LocalWorker):
                 # Check if we can transition to half-open
                 if (
                     self._last_failure_time
-                    and time.monotonic() - self._last_failure_time >= self.recovery_timeout
+                    and time.monotonic() - self._last_failure_time
+                    >= self.recovery_timeout
                 ):
                     self._circuit_state = "half_open"
                     self._half_open_attempts = 0
@@ -280,7 +288,9 @@ class TestNodeHealthTransitions:
 
         # Should fail
         with pytest.raises(RuntimeError):
-            worker.run(make_spec("fail"), ProviderSpec(name="mock"), "", RuntimeOptions())
+            worker.run(
+                make_spec("fail"), ProviderSpec(name="mock"), "", RuntimeOptions()
+            )
 
         # Recover
         worker.set_healthy(True)
@@ -316,7 +326,12 @@ class TestCircuitBreakerBehavior:
         for i in range(3):
             worker.trigger_failure()
             try:
-                worker.run(make_spec(f"fail_{i}"), ProviderSpec(name="mock"), "", RuntimeOptions())
+                worker.run(
+                    make_spec(f"fail_{i}"),
+                    ProviderSpec(name="mock"),
+                    "",
+                    RuntimeOptions(),
+                )
             except RuntimeError:
                 pass
 
@@ -330,7 +345,12 @@ class TestCircuitBreakerBehavior:
         for i in range(2):
             worker.trigger_failure()
             try:
-                worker.run(make_spec(f"trip_{i}"), ProviderSpec(name="mock"), "", RuntimeOptions())
+                worker.run(
+                    make_spec(f"trip_{i}"),
+                    ProviderSpec(name="mock"),
+                    "",
+                    RuntimeOptions(),
+                )
             except RuntimeError:
                 pass
 
@@ -338,7 +358,9 @@ class TestCircuitBreakerBehavior:
 
         # Next request should fail fast
         with pytest.raises(RuntimeError) as exc_info:
-            worker.run(make_spec("rejected"), ProviderSpec(name="mock"), "", RuntimeOptions())
+            worker.run(
+                make_spec("rejected"), ProviderSpec(name="mock"), "", RuntimeOptions()
+            )
         assert "open" in str(exc_info.value).lower()
 
     def test_circuit_transitions_to_half_open(self):
@@ -352,7 +374,12 @@ class TestCircuitBreakerBehavior:
         for i in range(2):
             worker.trigger_failure()
             try:
-                worker.run(make_spec(f"trip_{i}"), ProviderSpec(name="mock"), "", RuntimeOptions())
+                worker.run(
+                    make_spec(f"trip_{i}"),
+                    ProviderSpec(name="mock"),
+                    "",
+                    RuntimeOptions(),
+                )
             except RuntimeError:
                 pass
 
@@ -362,7 +389,9 @@ class TestCircuitBreakerBehavior:
         time.sleep(0.15)
 
         # Next request should be allowed (half-open)
-        result = worker.run(make_spec("probe"), ProviderSpec(name="mock"), "", RuntimeOptions())
+        result = worker.run(
+            make_spec("probe"), ProviderSpec(name="mock"), "", RuntimeOptions()
+        )
         assert result.success
         assert worker.circuit_state == "closed"  # Success closes circuit
 
@@ -378,7 +407,12 @@ class TestCircuitBreakerBehavior:
         for i in range(2):
             worker.trigger_failure()
             try:
-                worker.run(make_spec(f"trip_{i}"), ProviderSpec(name="mock"), "", RuntimeOptions())
+                worker.run(
+                    make_spec(f"trip_{i}"),
+                    ProviderSpec(name="mock"),
+                    "",
+                    RuntimeOptions(),
+                )
             except RuntimeError:
                 pass
 
@@ -388,7 +422,9 @@ class TestCircuitBreakerBehavior:
         # Fail the probe request
         worker.trigger_failure()
         try:
-            worker.run(make_spec("probe_fail"), ProviderSpec(name="mock"), "", RuntimeOptions())
+            worker.run(
+                make_spec("probe_fail"), ProviderSpec(name="mock"), "", RuntimeOptions()
+            )
         except RuntimeError:
             pass
 
@@ -619,8 +655,7 @@ class TestConcurrentFailover:
     def test_all_workers_fail_gracefully(self):
         """System handles all workers failing."""
         workers = [
-            FailableWorker(max_concurrent=4, fail_permanently=True)
-            for _ in range(3)
+            FailableWorker(max_concurrent=4, fail_permanently=True) for _ in range(3)
         ]
 
         runtime = DistributedRuntime(workers=workers)

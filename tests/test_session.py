@@ -1,4 +1,5 @@
 """Tests for Session conversation persistence."""
+
 from __future__ import annotations
 
 import tempfile
@@ -28,7 +29,9 @@ def test_format_history_single() -> None:
 
 def test_format_history_with_data() -> None:
     """Exchange with data snippet shows data indicator."""
-    exchanges = [Exchange(user="Find bug", assistant="Found it", data_snippet="log data")]
+    exchanges = [
+        Exchange(user="Find bug", assistant="Found it", data_snippet="log data")
+    ]
     result = _format_history(exchanges)
     assert "[Data provided:" in result
 
@@ -48,10 +51,12 @@ def test_format_history_truncates() -> None:
 
 def test_session_run_appends_exchange() -> None:
     """Each run() appends to conversation history."""
-    mock_provider = MockProvider(main_outputs=[
-        '```python\nFINAL("First answer")\n```',
-        '```python\nFINAL("Second answer")\n```',
-    ])
+    mock_provider = MockProvider(
+        main_outputs=[
+            '```python\nFINAL("First answer")\n```',
+            '```python\nFINAL("Second answer")\n```',
+        ]
+    )
 
     # Patch at runtime level where RLM mode resolves providers
     with patch("enzu.runtime.local.resolve_provider", return_value=mock_provider):
@@ -172,9 +177,7 @@ def test_session_budget_cap_raises_when_exceeded() -> None:
 
 def test_session_budget_cap_allows_under_limit() -> None:
     """Session allows runs when under budget cap."""
-    mock_provider = MockProvider(main_outputs=[
-        '```python\nFINAL("Done")\n```'
-    ])
+    mock_provider = MockProvider(main_outputs=['```python\nFINAL("Done")\n```'])
 
     # Patch at runtime level where RLM mode resolves providers
     with patch("enzu.runtime.local.resolve_provider", return_value=mock_provider):
@@ -257,9 +260,7 @@ def test_session_token_cap_raises_when_exceeded() -> None:
 
 def test_session_token_cap_allows_under_limit() -> None:
     """Session allows runs when under token cap."""
-    mock_provider = MockProvider(main_outputs=[
-        '```python\nFINAL("Done")\n```'
-    ])
+    mock_provider = MockProvider(main_outputs=['```python\nFINAL("Done")\n```'])
 
     # Patch at runtime level where RLM mode resolves providers
     with patch("enzu.runtime.local.resolve_provider", return_value=mock_provider):

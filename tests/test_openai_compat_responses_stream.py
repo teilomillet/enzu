@@ -73,7 +73,9 @@ def test_stream_responses_handles_output_text_done() -> None:
         )
     ]
     client = _FakeClient(events)
-    provider = OpenAICompatProvider(name="openai", client=client, supports_responses=True)  # type: ignore[arg-type]
+    provider = OpenAICompatProvider(
+        name="openai", client=client, supports_responses=True
+    )  # type: ignore[arg-type]
 
     result = provider.stream(_task())
 
@@ -102,7 +104,9 @@ def test_stream_responses_handles_dict_output_item_done() -> None:
         },
     ]
     client = _FakeClient(events)
-    provider = OpenAICompatProvider(name="openai", client=client, supports_responses=True)  # type: ignore[arg-type]
+    provider = OpenAICompatProvider(
+        name="openai", client=client, supports_responses=True
+    )  # type: ignore[arg-type]
 
     result = provider.stream(_task())
 
@@ -117,7 +121,9 @@ def test_stream_responses_falls_back_on_failure_event() -> None:
     ]
     response = {"output_text": "fallback", "usage": {"output_tokens": 2}}
     client = _FallbackClient(events, response)
-    provider = OpenAICompatProvider(name="openai", client=client, supports_responses=True)  # type: ignore[arg-type]
+    provider = OpenAICompatProvider(
+        name="openai", client=client, supports_responses=True
+    )  # type: ignore[arg-type]
     progress: list[str] = []
 
     result = provider.stream(_task(), on_progress=lambda e: progress.append(e.message))

@@ -36,7 +36,9 @@ FINAL_VAR("counts")
     }
     # Fallback output if budget exhausted during step 1
     fallback_output = '```python\nFINAL("location: 2, person: 2")\n```'
-    provider = MockProvider(main_outputs=[model_output, fallback_output], subcall_responses=subcalls)
+    provider = MockProvider(
+        main_outputs=[model_output, fallback_output], subcall_responses=subcalls
+    )
     task = TaskSpec(
         task_id="example3",
         input_text="Count location vs person questions with batching.",

@@ -60,7 +60,10 @@ class TestRLMContextIntegration:
         assert report.context_breakdown["total_steps"] >= 1
 
         # Should track LLM invocations (at least as many as steps)
-        assert report.context_breakdown["llm_invocations"] >= report.context_breakdown["total_steps"]
+        assert (
+            report.context_breakdown["llm_invocations"]
+            >= report.context_breakdown["total_steps"]
+        )
 
     def test_context_breakdown_system_prompt(self):
         """Verify system prompt size is tracked."""

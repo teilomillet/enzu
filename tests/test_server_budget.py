@@ -2,6 +2,7 @@
 """
 Test budget enforcement for the HTTP API server.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -36,7 +37,9 @@ async def test_budget_tracking():
     app = create_app()
 
     transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test", timeout=TIMEOUT) as client:
+    async with AsyncClient(
+        transport=transport, base_url="http://test", timeout=TIMEOUT
+    ) as client:
         # Create session with a cost limit
         print("\n1. Creating session with max_cost_usd=0.10...")
         resp = await client.post(
@@ -74,7 +77,7 @@ async def test_budget_tracking():
         state = resp.json()
         print(f"   total_cost_usd: ${state['total_cost_usd']:.6f}")
         print(f"   total_tokens: {state['total_tokens']}")
-        remaining = state.get('remaining_cost_usd')
+        remaining = state.get("remaining_cost_usd")
         if remaining is not None:
             print(f"   remaining_cost_usd: ${remaining:.6f}")
         print(f"   exchange_count: {state['exchange_count']}")
@@ -85,20 +88,22 @@ async def test_budget_tracking():
         for i in range(5):
             resp = await client.post(
                 f"/v1/sessions/{session_id}/run",
-                json={"task": f"Count from 1 to {(i+1)*10}. Just the numbers."},
+                json={"task": f"Count from 1 to {(i + 1) * 10}. Just the numbers."},
                 timeout=TIMEOUT,
             )
             if resp.status_code == 200:
                 result = resp.json()
-                print(f"   Task {i+1}: cost=${result['session_total_cost_usd']:.6f}, tokens={result['session_total_tokens']}")
+                print(
+                    f"   Task {i + 1}: cost=${result['session_total_cost_usd']:.6f}, tokens={result['session_total_tokens']}"
+                )
             elif resp.status_code == 402:
-                print(f"   Task {i+1}: BUDGET EXCEEDED (HTTP 402)")
+                print(f"   Task {i + 1}: BUDGET EXCEEDED (HTTP 402)")
                 error = resp.json()
                 print(f"   Error code: {error['error']['code']}")
                 budget_exceeded = True
                 break
             else:
-                print(f"   Task {i+1}: Unexpected error {resp.status_code}")
+                print(f"   Task {i + 1}: Unexpected error {resp.status_code}")
                 print(f"   {resp.text}")
 
         # Final state
@@ -108,7 +113,7 @@ async def test_budget_tracking():
             state = resp.json()
             print(f"   total_cost_usd: ${state['total_cost_usd']:.6f}")
             print(f"   total_tokens: {state['total_tokens']}")
-            remaining = state.get('remaining_cost_usd')
+            remaining = state.get("remaining_cost_usd")
             if remaining is not None:
                 print(f"   remaining_cost_usd: ${remaining:.6f}")
             print(f"   exchange_count: {state['exchange_count']}")

@@ -85,7 +85,9 @@ def test_auto_mode_selects_rlm_with_data(monkeypatch: pytest.MonkeyPatch) -> Non
     assert calls[0]["mode"] == "rlm"
 
 
-def test_auto_mode_selects_rlm_for_large_context(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_auto_mode_selects_rlm_for_large_context(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     calls: list[dict] = []
 
     def fake_run_internal(*_args, **kwargs):

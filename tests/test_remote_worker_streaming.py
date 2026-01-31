@@ -9,7 +9,13 @@ from unittest.mock import patch, MagicMock
 
 import pytest
 
-from enzu.models import BudgetUsage, RLMExecutionReport, TaskSpec, Budget, SuccessCriteria
+from enzu.models import (
+    BudgetUsage,
+    RLMExecutionReport,
+    TaskSpec,
+    Budget,
+    SuccessCriteria,
+)
 from enzu.runtime import ProviderSpec, RuntimeOptions
 from enzu.runtime.distributed import RemoteWorker
 
@@ -329,6 +335,7 @@ class TestWorkerStreamingEndpoint:
     def test_stream_requires_auth(self):
         """Streaming endpoint requires authentication when secret is set."""
         import os
+
         old_secret = os.environ.get("ENZU_WORKER_SECRET")
         os.environ["ENZU_WORKER_SECRET"] = "test-secret"
 

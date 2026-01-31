@@ -11,6 +11,7 @@ This test is designed to ACTUALLY verify correctness - not just claim to pass.
 Each instance has a unique subject/marker that MUST appear in its output and
 MUST NOT appear in any other instance's output.
 """
+
 from __future__ import annotations
 
 import threading
@@ -35,19 +36,21 @@ from enzu.rlm.engine import RLMEngine
 # DATA CLASSES FOR TEST TRACKING
 # =============================================================================
 
+
 @dataclass
 class EngineResult:
     """Result from a single RLMEngine execution."""
+
     instance_id: int
-    subject: str                    # Unique subject/topic for this instance
-    correlation_marker: str         # Unique marker that must appear in output
+    subject: str  # Unique subject/topic for this instance
+    correlation_marker: str  # Unique marker that must appear in output
     success: bool
     answer: Optional[str]
     output_text: Optional[str]
     start_time: float
     end_time: float
     duration_ms: float
-    subcalls_made: int              # How many llm_query/llm_batch calls were made
+    subcalls_made: int  # How many llm_query/llm_batch calls were made
     error: Optional[str] = None
 
     @property
@@ -61,42 +64,44 @@ class EngineResult:
 @dataclass
 class ConcurrencyTestMetrics:
     """Metrics from the concurrent test run."""
+
     total_instances: int
     successful_instances: int
     failed_instances: int
-    isolation_violations: int       # Cross-contamination detected
-    missing_markers: int            # Instances that don't have their own marker
+    isolation_violations: int  # Cross-contamination detected
+    missing_markers: int  # Instances that don't have their own marker
     peak_concurrent: int
     total_subcalls: int
     total_duration_ms: float
 
     def to_report(self) -> str:
         return f"""
-{'='*66}
+{"=" * 66}
         CONCURRENT RLMENGINE TEST REPORT
-{'='*66}
+{"=" * 66}
  Total instances: {self.total_instances}
  Successful: {self.successful_instances}
  Failed: {self.failed_instances}
  Success rate: {self.successful_instances / self.total_instances:.1%}
-{'='*66}
+{"=" * 66}
  ISOLATION CHECK
-{'-'*66}
+{"-" * 66}
  Isolation violations (cross-contamination): {self.isolation_violations}
  Missing markers (own marker not found): {self.missing_markers}
-{'='*66}
+{"=" * 66}
  CONCURRENCY
-{'-'*66}
+{"-" * 66}
  Peak concurrent executions: {self.peak_concurrent}
  Total subcalls (llm_query): {self.total_subcalls}
  Total duration: {self.total_duration_ms:.1f}ms
-{'='*66}
+{"=" * 66}
 """
 
 
 # =============================================================================
 # MOCK PROVIDER FOR TESTING
 # =============================================================================
+
 
 class SubjectAwareProvider(BaseProvider):
     """
@@ -108,6 +113,7 @@ class SubjectAwareProvider(BaseProvider):
 
     The provider ensures each instance gets output containing ONLY its own marker.
     """
+
     name = "subject_aware_mock"
 
     # Different subjects we'll test with
@@ -162,14 +168,16 @@ class SubjectAwareProvider(BaseProvider):
 
             # Track call
             with self._lock:
-                self._calls.append({
-                    "task_id": task.task_id,
-                    "instance_id": instance_id,
-                    "correlation_marker": correlation_marker,
-                    "subject": subject,
-                    "is_subcall": is_subcall,
-                    "timestamp": time.time(),
-                })
+                self._calls.append(
+                    {
+                        "task_id": task.task_id,
+                        "instance_id": instance_id,
+                        "correlation_marker": correlation_marker,
+                        "subject": subject,
+                        "is_subcall": is_subcall,
+                        "timestamp": time.time(),
+                    }
+                )
                 if is_subcall:
                     self._subcall_count += 1
 
@@ -185,7 +193,7 @@ class SubjectAwareProvider(BaseProvider):
 
             # Main call: generate code that uses llm_query and returns the marker
             # This tests that subagents work AND that isolation is maintained
-            code = f'''```python
+            code = f"""```python
 # Research task on {subject} with marker {correlation_marker}
 # Use llm_query to spawn a subagent
 sub_result = llm_query("Research details about {subject}")
@@ -193,7 +201,7 @@ sub_result = llm_query("Research details about {subject}")
 # Build final answer with the correlation marker
 answer = f"Analysis of {subject}: {correlation_marker}. Sub-research: {{sub_result}}"
 FINAL(answer)
-```'''
+```"""
 
             return ProviderResult(
                 output_text=code,
@@ -236,6 +244,7 @@ FINAL(answer)
 # =============================================================================
 # TEST RUNNER
 # =============================================================================
+
 
 def run_single_engine(
     instance_id: int,
@@ -367,6 +376,7 @@ async def run_concurrent_engines(
 # TESTS
 # =============================================================================
 
+
 class TestConcurrentRLMEngines:
     """Test suite for concurrent RLMEngine execution."""
 
@@ -395,24 +405,29 @@ class TestConcurrentRLMEngines:
         print(metrics.to_report())
 
         # MUST have all instances succeed
-        assert metrics.successful_instances == 10, \
+        assert metrics.successful_instances == 10, (
             f"Expected all 10 instances to succeed, but {metrics.failed_instances} failed"
+        )
 
         # MUST have zero isolation violations
-        assert metrics.isolation_violations == 0, \
+        assert metrics.isolation_violations == 0, (
             f"Found {metrics.isolation_violations} cross-contamination violations"
+        )
 
         # MUST have zero missing markers
-        assert metrics.missing_markers == 0, \
+        assert metrics.missing_markers == 0, (
             f"Found {metrics.missing_markers} instances missing their own marker"
+        )
 
         # MUST have spawned subagents (each instance calls llm_query)
-        assert metrics.total_subcalls >= 10, \
+        assert metrics.total_subcalls >= 10, (
             f"Expected at least 10 subcalls, but only got {metrics.total_subcalls}"
+        )
 
         # Verify we actually ran concurrently (peak > 1)
-        assert metrics.peak_concurrent > 1, \
+        assert metrics.peak_concurrent > 1, (
             f"Expected concurrent execution, but peak was {metrics.peak_concurrent}"
+        )
 
         print("SUCCESS: All 10 instances completed with proper isolation")
         print(f"  Peak concurrent: {metrics.peak_concurrent}")
@@ -431,19 +446,24 @@ class TestConcurrentRLMEngines:
 
         # Allow some failures in stress test (90% success rate)
         min_success = int(15 * 0.9)
-        assert metrics.successful_instances >= min_success, \
+        assert metrics.successful_instances >= min_success, (
             f"Expected at least {min_success} successes, but got {metrics.successful_instances}"
+        )
 
         # MUST have zero isolation violations even under stress
-        assert metrics.isolation_violations == 0, \
+        assert metrics.isolation_violations == 0, (
             f"Found {metrics.isolation_violations} cross-contamination violations under stress"
+        )
 
         # Missing markers are okay if the instance failed
         successful_missing = min(metrics.missing_markers, metrics.successful_instances)
-        assert successful_missing == 0, \
+        assert successful_missing == 0, (
             f"Found {successful_missing} successful instances missing their marker"
+        )
 
-        print(f"SUCCESS: {metrics.successful_instances}/15 instances completed with proper isolation")
+        print(
+            f"SUCCESS: {metrics.successful_instances}/15 instances completed with proper isolation"
+        )
 
     @pytest.mark.anyio
     async def test_engine_isolation_per_subject(self, provider):
@@ -462,22 +482,27 @@ class TestConcurrentRLMEngines:
                 continue
 
             # Own subject should be in output
-            assert result.subject in (result.answer or ""), \
+            assert result.subject in (result.answer or ""), (
                 f"Instance {result.instance_id}'s output missing its subject '{result.subject}'"
+            )
 
             # Other subjects should NOT be in output (unless it's a common word)
             for other in results:
                 if other.instance_id != result.instance_id:
                     # Only check for subject contamination, not common words
-                    if other.subject in (result.answer or "") and other.subject != result.subject:
+                    if (
+                        other.subject in (result.answer or "")
+                        and other.subject != result.subject
+                    ):
                         # This is a potential contamination
                         # But we need to be careful - "machine_learning" appearing in "artificial_intelligence"
                         # discussion would be normal. So we check for the correlation marker instead.
                         pass
 
         # The correlation marker check is the definitive isolation test
-        assert metrics.isolation_violations == 0, \
+        assert metrics.isolation_violations == 0, (
             f"Found {metrics.isolation_violations} isolation violations"
+        )
 
         print("SUCCESS: All subjects properly isolated")
 
@@ -496,8 +521,9 @@ class TestConcurrentRLMEngines:
             print(f"  Peak concurrent: {metrics.peak_concurrent}")
 
             # All should succeed with zero violations
-            assert metrics.isolation_violations == 0, \
+            assert metrics.isolation_violations == 0, (
                 f"Violations with {num_instances} instances: {metrics.isolation_violations}"
+            )
 
         print("\nSUCCESS: All load levels passed isolation checks")
 
@@ -505,6 +531,7 @@ class TestConcurrentRLMEngines:
 # =============================================================================
 # SYNC TEST ALTERNATIVE (if anyio not available)
 # =============================================================================
+
 
 def test_10_concurrent_rlm_engines_sync():
     """
@@ -558,9 +585,9 @@ def test_10_concurrent_rlm_engines_sync():
                     break
 
     print(f"""
-{'='*66}
+{"=" * 66}
         SYNC CONCURRENT RLMENGINE TEST RESULTS
-{'='*66}
+{"=" * 66}
  Total instances: {num_instances}
  Successful: {len(successful)}
  Isolation violations: {isolation_violations}
@@ -568,24 +595,29 @@ def test_10_concurrent_rlm_engines_sync():
  Peak concurrent: {provider.peak_concurrent}
  Total subcalls: {provider.subcall_count}
  Total duration: {total_duration_ms:.1f}ms
-{'='*66}
+{"=" * 66}
 """)
 
     # Assertions
-    assert len(successful) == num_instances, \
+    assert len(successful) == num_instances, (
         f"Expected all {num_instances} to succeed, but {num_instances - len(successful)} failed"
+    )
 
-    assert isolation_violations == 0, \
+    assert isolation_violations == 0, (
         f"Found {isolation_violations} cross-contamination violations"
+    )
 
-    assert missing_markers == 0, \
+    assert missing_markers == 0, (
         f"Found {missing_markers} instances missing their marker"
+    )
 
-    assert provider.subcall_count >= num_instances, \
+    assert provider.subcall_count >= num_instances, (
         f"Expected at least {num_instances} subcalls, got {provider.subcall_count}"
+    )
 
-    assert provider.peak_concurrent > 1, \
+    assert provider.peak_concurrent > 1, (
         f"Expected concurrent execution, peak was only {provider.peak_concurrent}"
+    )
 
     print("SUCCESS: All 10 concurrent RLMEngine instances passed isolation test")
 
