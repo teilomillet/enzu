@@ -224,6 +224,7 @@ JSON
 - `docs/SERVER.md` - HTTP API
 - `docs/PYTHON_API_REFERENCE.md` - Full Python API
 - `docs/COOKBOOK.md` - Patterns and recipes
+- `docs/BUDGETS_AS_PHYSICS.md` - Essay: budgets, containment, typed outcomes for delegated agents
 
 ## Examples
 
