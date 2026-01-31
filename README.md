@@ -238,6 +238,7 @@ JSON
 - `examples/budget_cap_seconds.py` - Tiny time cap (hard stop)
 - `examples/budget_cap_cost_openrouter.py` - Tiny cost cap (OpenRouter only)
 - `examples/run_metrics_demo.py` - p50/p95 cost/run and terminal state distributions
+- `examples/retry_tracking_demo.py` - Retry tracking and budget attribution
 - `examples/rlm_with_context.py` - RLM run over longer context
 - `examples/chat_with_budget.py` - TaskSpec + budgets + success criteria
 - `examples/http_quickstart.sh` - HTTP API run

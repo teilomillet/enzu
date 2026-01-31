@@ -11,6 +11,7 @@ Teams typically track:
 But what breaks in production is:
 - **p95 cost per run** (the expensive outliers)
 - **Terminal state distribution** (what fraction hits TIMEOUT vs BUDGET_EXCEEDED?)
+- **Correlated retries** (429s and transient errors that blow budgets)
 
 ## Quick Start
 
@@ -77,6 +78,7 @@ print(f"p95 time/run: {stats['percentiles']['elapsed_seconds']['p95']:.2f}s")
 | `input_tokens` | 50 → 250k | Prompt size |
 | `output_tokens` | 50 → 250k | Generation size |
 | `retries` | 0 → 100 | Retry frequency |
+| `retry_backoff_seconds` | — | Time spent in backoff |
 
 ### Counters (terminal states)
 
@@ -84,6 +86,8 @@ print(f"p95 time/run: {stats['percentiles']['elapsed_seconds']['p95']:.2f}s")
 |--------|--------|-------------|
 | `runs_total` | outcome, partial | Count by terminal state |
 | `runs_cost_unknown_total` | — | Runs without cost data |
+| `retries_total` | reason | Total retries by reason |
+| `budget_exceeded_during_retry_total` | — | Budget hits during retries |
 
 ## Getting p50/p95/p99
 
@@ -202,6 +206,77 @@ def emit_otel_metrics(event: RunEvent):
 
 5. **Track cost coverage**: If `cost_coverage < 50%`, your p95 cost estimates are unreliable (consider using OpenRouter for cost tracking).
 
-## Example
+## Retry Tracking
 
-See [examples/run_metrics_demo.py](../examples/run_metrics_demo.py) for a complete working example.
+Retries are a hidden cost multiplier. enzu tracks them as first-class budget signals.
+
+### Using retry_tracking_context
+
+```python
+from enzu import Enzu
+from enzu.retries import retry_tracking_context
+from enzu.metrics import RunEvent, get_run_metrics
+
+client = Enzu()
+collector = get_run_metrics()
+
+with retry_tracking_context() as tracker:
+    started = datetime.now(timezone.utc)
+    report = client.run("Do something", tokens=500, return_report=True)
+    finished = datetime.now(timezone.utc)
+
+    # Tracker captures retries that happened during the run
+    print(f"Retries: {tracker.total_retries}")
+    print(f"By reason: {tracker.to_dict()}")
+    print(f"Backoff time: {tracker.backoff_seconds_total}s")
+
+    # Create event with retry data
+    event = RunEvent.from_report_with_tracker(
+        run_id="...",
+        report=report,
+        started_at=started,
+        finished_at=finished,
+        tracker=tracker,
+    )
+    collector.observe(event)
+```
+
+### Retry Reasons
+
+| Reason | Cause |
+|--------|-------|
+| `rate_limit` | 429 Too Many Requests |
+| `timeout` | Request timed out |
+| `server_error` | 5xx server errors |
+| `connection_error` | Network/connection failures |
+| `unknown` | Other retryable errors |
+
+### Budget Attribution
+
+When budget is exceeded and retries occurred, `budget_exceeded_during_retry=True`:
+
+```python
+stats = collector.snapshot()
+
+# Rate of budget exhaustion during retry storms
+print(f"Budget exceeded during retry: {stats['budget_exceeded_during_retry_rate']:.1%}")
+
+# Retry reason breakdown
+for reason, count in stats["retry_reason_distribution"].items():
+    print(f"  {reason}: {count} retries")
+```
+
+### Mitigating Retry Storms
+
+When you see high `budget_exceeded_during_retry_rate`:
+
+1. **Add jitter**: Randomize request timing to avoid thundering herd
+2. **Use concurrency limits**: `configure_global_limiter(max_concurrent=10)`
+3. **Enable circuit breakers**: Stop retrying when provider is degraded
+4. **Queue with backpressure**: Don't spawn new requests during storms
+
+## Examples
+
+See:
+- [examples/run_metrics_demo.py](../examples/run_metrics_demo.py) - Basic metrics
+- [examples/retry_tracking_demo.py](../examples/retry_tracking_demo.py) - Retry tracking

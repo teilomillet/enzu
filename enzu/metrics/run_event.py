@@ -69,6 +69,9 @@ class RunEvent(BaseModel):
     limits_exceeded: List[str] = Field(default_factory=list)
 
     retries: int = Field(default=0, ge=0)
+    retries_by_reason: Dict[str, int] = Field(default_factory=dict)
+    retry_backoff_seconds: float = Field(default=0.0, ge=0)
+    budget_exceeded_during_retry: bool = Field(default=False)
 
     attributes: Dict[str, Any] = Field(default_factory=dict)
 
@@ -81,6 +84,9 @@ class RunEvent(BaseModel):
         started_at: datetime,
         finished_at: datetime,
         retries: int = 0,
+        retries_by_reason: Optional[Dict[str, int]] = None,
+        retry_backoff_seconds: float = 0.0,
+        budget_exceeded_during_retry: bool = False,
         attributes: Optional[Dict[str, Any]] = None,
     ) -> "RunEvent":
         """
@@ -92,6 +98,9 @@ class RunEvent(BaseModel):
             started_at: When the run started.
             finished_at: When the run completed.
             retries: Number of retries that occurred.
+            retries_by_reason: Breakdown of retries by reason.
+            retry_backoff_seconds: Total time spent in retry backoff.
+            budget_exceeded_during_retry: True if budget hit during retries.
             attributes: Optional high-cardinality attributes.
 
         Returns:
@@ -102,6 +111,14 @@ class RunEvent(BaseModel):
         elapsed = usage.elapsed_seconds
         if elapsed is None or elapsed == 0:
             elapsed = (finished_at - started_at).total_seconds()
+
+        has_retries = retries > 0
+        limits_exceeded = list(usage.limits_exceeded or [])
+        budget_hit = len(limits_exceeded) > 0
+
+        budget_exceeded_during_retry_final = budget_exceeded_during_retry or (
+            budget_hit and has_retries
+        )
 
         return cls(
             run_id=run_id,
@@ -118,10 +135,61 @@ class RunEvent(BaseModel):
             output_tokens=usage.output_tokens,
             total_tokens=usage.total_tokens,
             cost_usd=usage.cost_usd,
-            limits_exceeded=list(usage.limits_exceeded or []),
+            limits_exceeded=limits_exceeded,
             retries=retries,
+            retries_by_reason=retries_by_reason or {},
+            retry_backoff_seconds=retry_backoff_seconds,
+            budget_exceeded_during_retry=budget_exceeded_during_retry_final,
             attributes=attributes or {},
         )
+
+    @classmethod
+    def from_report_with_tracker(
+        cls,
+        *,
+        run_id: str,
+        report: Any,
+        started_at: datetime,
+        finished_at: datetime,
+        tracker: Optional[Any] = None,
+        attributes: Optional[Dict[str, Any]] = None,
+    ) -> "RunEvent":
+        """
+        Create a RunEvent from a report and optional RetryTracker.
+
+        Convenience method that extracts retry info from a RetryTracker.
+
+        Args:
+            run_id: Unique run identifier.
+            report: ExecutionReport or RLMExecutionReport.
+            started_at: When the run started.
+            finished_at: When the run completed.
+            tracker: Optional RetryTracker from retry_tracking_context.
+            attributes: Optional high-cardinality attributes.
+
+        Returns:
+            A new RunEvent instance with retry data populated.
+        """
+        if tracker is not None:
+            return cls.from_execution_report(
+                run_id=run_id,
+                report=report,
+                started_at=started_at,
+                finished_at=finished_at,
+                retries=tracker.total_retries,
+                retries_by_reason=tracker.to_dict(),
+                retry_backoff_seconds=tracker.backoff_seconds_total,
+                budget_exceeded_during_retry=tracker.budget_exceeded_during_retry,
+                attributes=attributes,
+            )
+        else:
+            return cls.from_execution_report(
+                run_id=run_id,
+                report=report,
+                started_at=started_at,
+                finished_at=finished_at,
+                attributes=attributes,
+            )
 
     def to_log_dict(self) -> Dict[str, Any]:
         """

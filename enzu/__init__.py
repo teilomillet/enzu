@@ -199,6 +199,14 @@ from enzu.metrics import (  # noqa: F401
     reset_run_metrics,
 )
 
+# Retry tracking - per-run retry visibility
+from enzu.retries import (  # noqa: F401
+    RetryReason,
+    RetryTracker,
+    get_retry_tracker,
+    retry_tracking_context,
+)
+
 # Sandbox image building and lifecycle management
 from enzu.sandbox import (  # noqa: F401
     # Image builder DSL (Phase 1)

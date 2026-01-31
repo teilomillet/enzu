@@ -176,6 +176,8 @@ class RunMetricsCollector:
         self._retries = _HistogramValue((0, 1, 2, 3, 5, 10, 25, 50, 100))
 
         self._runs_by_outcome: Dict[str, _CounterValue] = defaultdict(_CounterValue)
+        self._retries_by_reason: Dict[str, _CounterValue] = defaultdict(_CounterValue)
+        self._budget_exceeded_during_retry = _CounterValue()
         self._cost_unknown = _CounterValue()
         self._total_runs = _CounterValue()
 
@@ -208,6 +210,12 @@ class RunMetricsCollector:
                 self._cost.observe(event.cost_usd)
             else:
                 self._cost_unknown.inc()
+
+            for reason, count in event.retries_by_reason.items():
+                self._retries_by_reason[reason].inc(count)
+
+            if event.budget_exceeded_during_retry:
+                self._budget_exceeded_during_retry.inc()
 
     def percentiles(self) -> Dict[str, Dict[str, Optional[float]]]:
         """
@@ -260,6 +268,16 @@ class RunMetricsCollector:
         with self._lock:
             return {k: v.get() for k, v in self._runs_by_outcome.items()}
 
+    def retry_reason_distribution(self) -> Dict[str, int]:
+        """
+        Get retry reason breakdown.
+
+        Returns:
+            Dict mapping reason (rate_limit, timeout, etc.) to total retry count.
+        """
+        with self._lock:
+            return {k: v.get() for k, v in self._retries_by_reason.items()}
+
     def snapshot(self) -> Dict[str, Any]:
         """
         Get complete metrics snapshot.
@@ -276,13 +294,21 @@ class RunMetricsCollector:
         cost_known = self._cost.count
         cost_unknown = self._cost_unknown.get()
 
+        total_runs = self._total_runs.get()
+        budget_exceeded_during_retry = self._budget_exceeded_during_retry.get()
+
         return {
-            "total_runs": self._total_runs.get(),
+            "total_runs": total_runs,
             "cost_known_runs": cost_known,
             "cost_unknown_runs": cost_unknown,
             "cost_coverage": cost_known / max(1, cost_known + cost_unknown),
             "percentiles": self.percentiles(),
             "outcome_distribution": self.outcome_distribution(),
+            "retry_reason_distribution": self.retry_reason_distribution(),
+            "budget_exceeded_during_retry": budget_exceeded_during_retry,
+            "budget_exceeded_during_retry_rate": (
+                budget_exceeded_during_retry / total_runs if total_runs > 0 else 0.0
+            ),
             "histograms": {
                 "elapsed_seconds": self._elapsed.get(),
                 "cost_usd": self._cost.get(),
@@ -330,6 +356,21 @@ class RunMetricsCollector:
         lines.append("# HELP enzu_runs_cost_unknown_total Runs without cost data")
         lines.append("# TYPE enzu_runs_cost_unknown_total counter")
         lines.append(f"enzu_runs_cost_unknown_total {self._cost_unknown.get()}")
+
+        lines.append("")
+        lines.append("# HELP enzu_retries_total Total retries by reason")
+        lines.append("# TYPE enzu_retries_total counter")
+        for reason, counter in self._retries_by_reason.items():
+            lines.append(f'enzu_retries_total{{reason="{reason}"}} {counter.get()}')
+
+        lines.append("")
+        lines.append(
+            "# HELP enzu_budget_exceeded_during_retry_total Runs where budget was exceeded during retries"
+        )
+        lines.append("# TYPE enzu_budget_exceeded_during_retry_total counter")
+        lines.append(
+            f"enzu_budget_exceeded_during_retry_total {self._budget_exceeded_during_retry.get()}"
+        )
 
         for name, histogram, unit in [
             ("enzu_run_elapsed_seconds", self._elapsed, "seconds"),
