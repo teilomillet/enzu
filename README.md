@@ -54,6 +54,75 @@ print(answer)
 
 Tip: Set `OPENAI_API_KEY`, `OPENROUTER_API_KEY`, or another provider key. You can always pass `model=` and `provider=` explicitly.
 
+## Budget hard-stop (killer feature)
+
+enzu enforces budgets as physics, not policy. When you set a limit, the system **will** stop:
+
+```python
+from enzu import Enzu
+
+client = Enzu()
+
+# Ask for 500 words but cap at 50 tokens - enzu stops deterministically
+result = client.run(
+    "Write a 500-word essay on climate change.",
+    data="...long research document...",
+    tokens=50,  # Hard cap: output stops here
+)
+# Result: "[PARTIAL - budget exhausted]..." - work stopped, no runaway costs
+```
+
+See [examples/budget_hardstop_demo.py](examples/budget_hardstop_demo.py) for the full demo.
+
+## RLM mode (reasoning over long context)
+
+When your input exceeds context limits, enzu automatically switches to RLM (Reasoning Language Model) mode—recursive subcalls that break the problem into manageable pieces:
+
+```python
+from enzu import Enzu
+
+client = Enzu()
+
+# Pass a large document - enzu auto-detects and uses RLM
+answer = client.run(
+    "Who is credited with the first algorithm?",
+    data=open("large_research_paper.txt").read(),  # 100k+ tokens
+    tokens=500,
+)
+```
+
+RLM mode provides progress callbacks, step-by-step reasoning, and budget enforcement across all subcalls.
+
+## Use cases
+
+**1. Cost-controlled batch processing**
+```python
+# Process 1000 documents with a $10 budget cap
+client = Enzu(cost=10.0)
+for doc in documents:
+    result = client.run("Extract key entities", data=doc)
+```
+
+**2. Research assistant with guardrails**
+```python
+# Research task with time and token limits
+answer = client.run(
+    "Research recent AI safety papers and summarize",
+    seconds=60,   # Max 1 minute
+    tokens=1000,  # Max 1000 output tokens
+)
+```
+
+**3. Long document analysis**
+```python
+# Analyze a document too large for context window
+summary = client.run(
+    "Summarize the main arguments and conclusions",
+    data=open("100_page_report.pdf.txt").read(),
+    tokens=500,
+)
+```
+
 ## HTTP API (server)
 
 ```bash
@@ -95,11 +164,12 @@ JSON
 
 ## Examples
 
+- `examples/budget_hardstop_demo.py` - **Killer demo**: budget cap stops work deterministically
 - `examples/python_quickstart.py` - Minimal Python usage
 - `examples/python_budget_guardrails.py` - Hard budget limits
-- `examples/http_quickstart.sh` - HTTP API run
-- `examples/chat_with_budget.py` - TaskSpec + budgets + success criteria
 - `examples/rlm_with_context.py` - RLM run over longer context
+- `examples/chat_with_budget.py` - TaskSpec + budgets + success criteria
+- `examples/http_quickstart.sh` - HTTP API run
 - `examples/research_with_exa.py` - Research tool + synthesis
 - `examples/file_chatbot.py` - File-based chat loop
 - `examples/file_researcher.py` - Session-based research loop
