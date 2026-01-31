@@ -1,0 +1,49 @@
+Document: Evaluation Frameworks for AI Systems
+Author: Benchmarking Consortium
+Date: 2024-03-10
+
+Rigorous evaluation is essential for understanding AI capabilities and limitations.
+This document outlines frameworks for assessing AI safety and performance.
+
+Connection to Safety:
+Evaluation directly supports the safety goals in ai_safety_overview.txt by
+providing evidence about system behavior. Without good evaluation, we cannot
+verify alignment claims.
+
+Framework Categories:
+
+1. Capability Evaluations
+   - Measure what the system can do
+   - Benchmarks: MMLU, HumanEval, etc.
+   - Dangerous capability detection (biosecurity, cyber)
+
+2. Alignment Evaluations  
+   - Measure whether the system does what we want
+   - Tests for reward hacking (see reward_modeling_paper.txt)
+   - Sycophancy and deception detection
+
+3. Robustness Evaluations
+   - Adversarial inputs
+   - Distribution shift
+   - Edge cases
+
+Red Teaming:
+Expert adversarial testing is critical. Red teams attempt to elicit harmful
+behavior, find jailbreaks, and identify failure modes. Results feed into
+the governance processes described in governance_framework.txt.
+
+Metrics:
+- Refusal rate on harmful requests
+- Helpfulness on benign requests
+- Consistency across phrasings
+- Calibration of uncertainty
+
+Challenges:
+- Goodhart's law: optimizing for metrics degrades underlying goals
+- Evaluations become stale as models improve
+- Need for continuous, adaptive evaluation
+
+Recommendations:
+- Combine automated and human evaluation
+- Use held-out test sets
+- Regular third-party audits (see governance_framework.txt)

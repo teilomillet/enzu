@@ -594,9 +594,18 @@ class RLMEngine:
             "result = llm_query('Search for recent news about AI agents and summarize')\n"
             "print(result)\n"
             "```\n\n"
-            "IMPORTANT: When you are done, call FINAL with your final output.\n"
-            'Example: FINAL("my final answer")\n\n'
-            "Think step by step and use the REPL environment to do the necessary work."
+            "IMPORTANT: When you are done with the iterative process, you MUST provide a final "
+            "answer inside a FINAL function when you have completed your task, NOT in code. "
+            "Do not use these tags unless you have completed your task. You have two options:\n"
+            "1. Use FINAL(your final answer here) to provide the answer directly\n"
+            "2. Use FINAL_VAR(variable_name) to return a variable you have created in the REPL "
+            "environment as your final output\n\n"
+            "Note: If you are ready to provide a final answer, you cannot write anything other "
+            "than the final answer in the FINAL or FINAL_VAR tags.\n\n"
+            "Think step by step carefully, plan, and execute this plan immediately in your "
+            "response -- do not just say 'I will do this' or 'I will do that'. Output to the "
+            "REPL environment and recursive LLMs as much as possible. Remember to explicitly "
+            "answer the original query in your final answer."
         )
 
         # Add budget constraints to system prompt so model knows limits upfront

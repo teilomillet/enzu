@@ -1,0 +1,17 @@
+{
+  "outcome": "success",
+  "partial": false,
+  "budget": {
+    "tokens": 1200,
+    "seconds": 120,
+    "cost": 0.5
+  },
+  "usage": {
+    "output": 762,
+    "total": 4320,
+    "elapsed": 11.179216861724854,
+    "cost": 0.01634985,
+    "limits_exceeded": []
+  },
+  "docs": 4
+}

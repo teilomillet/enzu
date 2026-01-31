@@ -400,9 +400,13 @@ class StepRunner:
                 return value
 
         # 3. Use last meaningful stdout as fallback
+        # But skip stdout that looks like raw context/data dumps
         for step in reversed(steps):
             stdout = step.stdout
             if stdout and len(stdout) >= 50 and not stdout.startswith("Word count:"):
+                # Skip if it looks like raw context dump (starts with list repr or has ===)
+                if stdout.startswith("[") or "===" in stdout[:200]:
+                    continue
                 if not any(
                     x in stdout.lower() for x in ["error", "traceback", "exception"]
                 ):
@@ -412,7 +416,18 @@ class StepRunner:
         # 4. Last resort: return raw model output (never lose the generation)
         # Strip code blocks to get the text content
         text = re.sub(r"```[\s\S]*?```", "", last_output).strip()
-        if len(text) >= 10:
+
+        # If the text looks like a structured report (has headers/sections),
+        # return it directly without the partial marker - it's likely complete
+        has_headers = bool(re.search(r"^##?\s+\w", text, re.MULTILINE))
+        has_sections = text.count("\n\n") >= 2 and len(text) >= 200
+
+        if has_headers or has_sections:
+            telemetry.log(
+                "info", "rlm_salvage_structured_output", content_len=len(text)
+            )
+            return text
+        elif len(text) >= 10:
             telemetry.log("info", "rlm_salvage_raw_output", content_len=len(text))
             return f"[PARTIAL - budget exhausted before FINAL()]\n{text}"
 
