@@ -17,6 +17,16 @@ enzu is a Python-first toolkit for AI engineers and builders who need reliable, 
 - **Provider-agnostic**: OpenAI-compatible APIs and bring-your-own model
 - **Production-ready surfaces**: Python SDK, CLI worker, and HTTP API
 
+## What enzu is / isn't
+
+| enzu is | enzu is not |
+|---------|-------------|
+| A budget-first execution engine | A prompt library or template system |
+| Hard stops when limits are hit | Best-effort throttling |
+| RLM for tasks that exceed context | A vector DB or RAG framework |
+| Provider-agnostic (OpenAI-compatible) | Tied to one vendor |
+| Lightweight (~2k LOC core) | A full agent framework |
+
 ## Quickstart (Python)
 
 ```bash
