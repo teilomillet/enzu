@@ -27,6 +27,13 @@ from enzu.rlm.prompts import (
     PIP_INSTALL_GUIDANCE,
     STRATEGY_HINTS,
 )
+from enzu.rlm.context_metrics import (
+    ContextBreakdown,
+    RLMTrajectoryMetrics,
+    RLMContextTracker,
+    get_rlm_context_tracker,
+    reset_rlm_context_tracker,
+)
 
 __all__ = [
     # Core
@@ -41,4 +48,10 @@ __all__ = [
     "SEARCH_TOOLS_GUIDANCE",
     "PIP_INSTALL_GUIDANCE",
     "STRATEGY_HINTS",
+    # Context metrics
+    "ContextBreakdown",
+    "RLMTrajectoryMetrics",
+    "RLMContextTracker",
+    "get_rlm_context_tracker",
+    "reset_rlm_context_tracker",
 ]

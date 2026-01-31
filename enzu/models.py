@@ -287,6 +287,10 @@ class RLMExecutionReport(BaseModel):
     steps: List[RLMStep] = Field(default_factory=list)
     budget_usage: BudgetUsage
     errors: List[str] = Field(default_factory=list)
+    context_breakdown: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="Context usage metrics (symbolic vs direct, file access patterns)",
+    )
 
 
 class ExecutionReport(BaseModel):

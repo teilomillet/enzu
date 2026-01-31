@@ -16,6 +16,7 @@
 - `../examples/python_budget_guardrails.py`
 - `../examples/chat_with_budget.py`
 - `../examples/rlm_with_context.py`
+- `../examples/rlm_context_optimization.py`
 - `../examples/research_with_exa.py`
 - `../examples/file_chatbot.py`
 - `../examples/file_researcher.py`
@@ -31,6 +32,7 @@
 - `FILE_BASED_RESEARCHER.md` - File-first research flow
 - `RUN_METRICS.md` - p95 cost/run and terminal state distributions
 - `STRESS_TESTING.md` - Test p95 behavior under degraded conditions
+- `RLM_CONTEXT.md` - RLM context management and optimization
 
 ## Reference
 
