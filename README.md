@@ -100,6 +100,9 @@ JSON
 
 - `examples/python_quickstart.py` - Minimal Python usage
 - `examples/python_budget_guardrails.py` - Hard budget limits
+- `examples/budget_cap_tokens.py` - Tiny token cap (hard stop)
+- `examples/budget_cap_seconds.py` - Tiny time cap (hard stop)
+- `examples/budget_cap_cost_openrouter.py` - Tiny cost cap (OpenRouter only)
 - `examples/http_quickstart.sh` - HTTP API run
 - `examples/chat_with_budget.py` - TaskSpec + budgets + success criteria
 - `examples/rlm_with_context.py` - RLM run over longer context
