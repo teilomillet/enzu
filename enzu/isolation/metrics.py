@@ -20,6 +20,7 @@ Integration:
         return collector.prometheus_format()
 
 """
+
 from __future__ import annotations
 
 import time
@@ -29,14 +30,13 @@ from typing import Any, Dict, Optional, Tuple
 from collections import defaultdict
 
 # Histogram buckets for latency (milliseconds)
-DEFAULT_LATENCY_BUCKETS = (
-    10, 25, 50, 100, 250, 500, 1000, 2500, 5000, 10000, 30000
-)
+DEFAULT_LATENCY_BUCKETS = (10, 25, 50, 100, 250, 500, 1000, 2500, 5000, 10000, 30000)
 
 
 @dataclass
 class CounterValue:
     """Thread-safe counter."""
+
     value: float = 0.0
     _lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
 
@@ -52,6 +52,7 @@ class CounterValue:
 @dataclass
 class GaugeValue:
     """Thread-safe gauge."""
+
     value: float = 0.0
     _lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
 
@@ -83,7 +84,7 @@ class HistogramValue:
     """
 
     def __init__(self, buckets: Tuple[float, ...] = DEFAULT_LATENCY_BUCKETS) -> None:
-        self._buckets = tuple(sorted(buckets)) + (float('inf'),)
+        self._buckets = tuple(sorted(buckets)) + (float("inf"),)
         self._counts = [0] * len(self._buckets)
         self._sum = 0.0
         self._count = 0
@@ -105,7 +106,7 @@ class HistogramValue:
             cumulative = 0
             for i, bound in enumerate(self._buckets):
                 cumulative += self._counts[i]
-                if bound != float('inf'):
+                if bound != float("inf"):
                     bucket_data.append((bound, cumulative))
 
             return {
@@ -148,6 +149,7 @@ class HistogramValue:
 @dataclass
 class MetricSnapshot:
     """Snapshot of all metrics at a point in time."""
+
     timestamp: float
 
     # Request metrics
@@ -273,7 +275,9 @@ class MetricsCollector:
         self._global_latency.observe(duration_ms)
         with self._lock:
             if node_id not in self._latency_histograms:
-                self._latency_histograms[node_id] = HistogramValue(self._latency_buckets)
+                self._latency_histograms[node_id] = HistogramValue(
+                    self._latency_buckets
+                )
             self._latency_histograms[node_id].observe(duration_ms)
 
         # Record error type if failed
@@ -326,7 +330,9 @@ class MetricsCollector:
             concurrency_waiting=self._concurrency_waiting.get(),
             concurrency_limit=self._concurrency_limit.get(),
             circuit_breaker_state=circuit_state,
-            circuit_breaker_failures={k: v.get() for k, v in self._circuit_failures.items()},
+            circuit_breaker_failures={
+                k: v.get() for k, v in self._circuit_failures.items()
+            },
             errors_by_type={k: v.get() for k, v in self._errors_by_type.items()},
             admission_accepted=self._admission_accepted.get(),
             admission_rejected=self._admission_rejected.get(),
@@ -370,9 +376,11 @@ class MetricsCollector:
         hist = snap.request_duration_ms
         for bound, count in hist.get("buckets", []):
             lines.append(f'enzu_request_duration_ms_bucket{{le="{bound}"}} {count}')
-        lines.append(f'enzu_request_duration_ms_bucket{{le="+Inf"}} {hist.get("count", 0)}')
-        lines.append(f'enzu_request_duration_ms_sum {hist.get("sum", 0)}')
-        lines.append(f'enzu_request_duration_ms_count {hist.get("count", 0)}')
+        lines.append(
+            f'enzu_request_duration_ms_bucket{{le="+Inf"}} {hist.get("count", 0)}'
+        )
+        lines.append(f"enzu_request_duration_ms_sum {hist.get('sum', 0)}")
+        lines.append(f"enzu_request_duration_ms_count {hist.get('count', 0)}")
 
         # Queue depth
         lines.append("")
@@ -406,12 +414,16 @@ class MetricsCollector:
 
         # Circuit breaker
         lines.append("")
-        lines.append("# HELP enzu_circuit_breaker_state Circuit breaker state (0=closed, 1=open, 2=half_open)")
+        lines.append(
+            "# HELP enzu_circuit_breaker_state Circuit breaker state (0=closed, 1=open, 2=half_open)"
+        )
         lines.append("# TYPE enzu_circuit_breaker_state gauge")
         state_map = {"closed": 0, "open": 1, "half_open": 2}
         for node_id, state in snap.circuit_breaker_state.items():
             state_val = state_map.get(state, -1)
-            lines.append(f'enzu_circuit_breaker_state{{node_id="{node_id}"}} {state_val}')
+            lines.append(
+                f'enzu_circuit_breaker_state{{node_id="{node_id}"}} {state_val}'
+            )
 
         # Errors
         lines.append("")

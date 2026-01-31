@@ -3,6 +3,7 @@ Run endpoint for single-shot task execution.
 
 POST /v1/run - Execute a task and return the answer (stateless).
 """
+
 from fastapi import APIRouter, Depends, Request
 
 from enzu.server.auth import get_api_key
@@ -32,7 +33,9 @@ async def run_task(
 
     Returns the generated answer along with usage information.
     """
-    request_id = getattr(request.state, "request_id", None) or get_request_id() or "unknown"
+    request_id = (
+        getattr(request.state, "request_id", None) or get_request_id() or "unknown"
+    )
 
     result = await enzu_service.run_task(
         task=request_body.task,

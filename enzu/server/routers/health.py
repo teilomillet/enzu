@@ -3,6 +3,7 @@ Health check endpoint.
 
 Provides basic health status for load balancers and monitoring.
 """
+
 from fastapi import APIRouter
 
 from enzu.server.schemas import HealthResponse

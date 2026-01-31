@@ -4,6 +4,7 @@ RLM Python sandbox with functional core.
 Design: Pure functions for execution logic, thin class wrapper for convenience.
 This separation makes the sandbox easier to test and reason about.
 """
+
 from __future__ import annotations
 
 import ast
@@ -18,6 +19,7 @@ from typing import Any, Callable, Dict, Iterable, Literal, Optional, Set, Tuple
 from enzu.repl.safe import SAFE_HELPERS
 from enzu.security import get_security_profile
 
+
 # Lazy import for search tools (optional dependency)
 def _get_search_tools() -> Dict[str, Any]:
     """Load search tools if available (requires EXA_API_KEY)."""
@@ -25,6 +27,7 @@ def _get_search_tools() -> Dict[str, Any]:
     try:
         from enzu.tools.exa import SEARCH_TOOLS
         from enzu.tools.research import RESEARCH_HELPERS
+
         # RLM uses __search_tools_available__ to decide whether to show search guidance.
         tools["__search_tools_available__"] = True
         tools.update(SEARCH_TOOLS)
@@ -62,7 +65,10 @@ class SandboxResult:
 
 # Pure functions for sandbox logic
 
-def build_safe_builtins(allowed_imports: Set[str], dynamic_imports: bool = False) -> Dict[str, Any]:
+
+def build_safe_builtins(
+    allowed_imports: Set[str], dynamic_imports: bool = False
+) -> Dict[str, Any]:
     """
     Build restricted builtins dict. Pure function.
 
@@ -156,7 +162,9 @@ def build_namespace(
         import sys
 
         if not enable_pip:
-            raise RuntimeError("pip_install is disabled. Set enable_pip=True in RLMEngine.")
+            raise RuntimeError(
+                "pip_install is disabled. Set enable_pip=True in RLMEngine."
+            )
 
         results = []
         for package in packages:
@@ -176,7 +184,9 @@ def build_namespace(
     from enzu.tools.context import CONTEXT_HELPERS
 
     namespace: Dict[str, Any] = {
-        "__builtins__": build_safe_builtins(allowed_imports, dynamic_imports=enable_pip),
+        "__builtins__": build_safe_builtins(
+            allowed_imports, dynamic_imports=enable_pip
+        ),
         "data": data,
         "context": context_value,
         "__rlm_answer__": answer_state,
@@ -313,10 +323,11 @@ def exec_code(
 
 # Thin class wrapper for convenience
 
+
 class PythonSandbox:
     """
     Thin wrapper around functional core.
-    
+
     Maintains namespace state across multiple exec() calls.
     Use exec_code() directly for stateless execution.
     """
@@ -394,6 +405,7 @@ class PythonSandbox:
 
 # Timeout context managers
 
+
 class _NoopContext:
     def __enter__(self) -> None:
         return None
@@ -428,6 +440,8 @@ class _AlarmTimeout:
     @staticmethod
     def _handle_timeout(signum: int, frame: Any) -> None:
         raise TimeoutError("Sandbox execution timed out.")
+
+
 class SandboxViolation(RuntimeError):
     """Sandbox policy violation."""
 

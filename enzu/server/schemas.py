@@ -1,6 +1,7 @@
 """
 Pydantic models for API request/response schemas.
 """
+
 from typing import List, Optional
 from pydantic import BaseModel, Field
 
@@ -24,12 +25,20 @@ class RunRequest(BaseModel):
     seconds: Optional[float] = Field(None, description="Max execution time", ge=0)
 
     # Generation parameters
-    temperature: Optional[float] = Field(None, description="Temperature (0.0-2.0)", ge=0, le=2)
-    max_steps: Optional[int] = Field(None, description="Max reasoning steps (RLM mode)", ge=1)
+    temperature: Optional[float] = Field(
+        None, description="Temperature (0.0-2.0)", ge=0, le=2
+    )
+    max_steps: Optional[int] = Field(
+        None, description="Max reasoning steps (RLM mode)", ge=1
+    )
 
     # Success criteria
-    contains: Optional[List[str]] = Field(None, description="Output must contain these substrings")
-    matches: Optional[List[str]] = Field(None, description="Output must match these regexes")
+    contains: Optional[List[str]] = Field(
+        None, description="Output must contain these substrings"
+    )
+    matches: Optional[List[str]] = Field(
+        None, description="Output must match these regexes"
+    )
     min_words: Optional[int] = Field(None, description="Minimum word count", ge=1)
     goal: Optional[str] = Field(None, description="Goal for model self-verification")
 
@@ -86,17 +95,25 @@ class SessionRunRequest(BaseModel):
     data: Optional[str] = Field(None, description="Context data for the task")
 
     # Budget constraints (per-request, within session budget)
-    cost: Optional[float] = Field(None, description="Max cost in USD for this request", ge=0)
+    cost: Optional[float] = Field(
+        None, description="Max cost in USD for this request", ge=0
+    )
     tokens: Optional[int] = Field(None, description="Max output tokens", ge=1)
     seconds: Optional[float] = Field(None, description="Max execution time", ge=0)
 
     # Generation parameters
-    temperature: Optional[float] = Field(None, description="Temperature (0.0-2.0)", ge=0, le=2)
+    temperature: Optional[float] = Field(
+        None, description="Temperature (0.0-2.0)", ge=0, le=2
+    )
     max_steps: Optional[int] = Field(None, description="Max reasoning steps", ge=1)
 
     # Success criteria
-    contains: Optional[List[str]] = Field(None, description="Output must contain these substrings")
-    matches: Optional[List[str]] = Field(None, description="Output must match these regexes")
+    contains: Optional[List[str]] = Field(
+        None, description="Output must contain these substrings"
+    )
+    matches: Optional[List[str]] = Field(
+        None, description="Output must match these regexes"
+    )
     min_words: Optional[int] = Field(None, description="Minimum word count", ge=1)
     goal: Optional[str] = Field(None, description="Goal for model self-verification")
 
@@ -134,7 +151,9 @@ class SessionRunResponse(BaseModel):
     request_id: str = Field(..., description="Unique request identifier")
     session_id: str = Field(..., description="Session identifier")
     exchange_number: int = Field(..., description="Exchange number in session")
-    usage: Optional[UsageInfo] = Field(None, description="Token and cost usage for this request")
+    usage: Optional[UsageInfo] = Field(
+        None, description="Token and cost usage for this request"
+    )
     session_total_cost_usd: float = Field(..., description="Cumulative session cost")
     session_total_tokens: int = Field(..., description="Cumulative session tokens")
 

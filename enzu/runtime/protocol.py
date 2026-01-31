@@ -45,5 +45,4 @@ class RLMRuntime(Protocol):
         provider: ProviderSpec,
         data: str,
         options: RuntimeOptions,
-    ) -> RLMExecutionReport:
-        ...
+    ) -> RLMExecutionReport: ...

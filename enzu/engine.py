@@ -6,6 +6,7 @@ Used for direct LLM queries without the multi-step RLM scaffold.
 
 Shares verification logic with RLMEngine via rlm/verification.py.
 """
+
 from __future__ import annotations
 
 import time
@@ -17,6 +18,7 @@ from enzu.contract import DEFAULT_MAX_OUTPUT_TOKENS
 from enzu.models import (
     BudgetUsage,
     ExecutionReport,
+    Outcome,
     ProgressEvent,
     TaskSpec,
     TrajectoryStep,
@@ -52,7 +54,9 @@ class Engine:
                 except Exception:
                     pass  # Callback failures should not crash engine execution
             # Only log progress events when streaming logs are enabled.
-            if telemetry.stream_enabled() or os.getenv("ENZU_LOGFIRE_PROGRESS", "").strip().lower() in {"1", "true", "yes", "on"}:
+            if telemetry.stream_enabled() or os.getenv(
+                "ENZU_LOGFIRE_PROGRESS", ""
+            ).strip().lower() in {"1", "true", "yes", "on"}:
                 telemetry.log(
                     "info",
                     "progress_event",
@@ -180,8 +184,12 @@ class Engine:
 
             for current_provider in all_providers:
                 try:
-                    with telemetry.span("provider.stream", provider=current_provider.name):
-                        provider_result = current_provider.stream(task, on_progress=emit)
+                    with telemetry.span(
+                        "provider.stream", provider=current_provider.name
+                    ):
+                        provider_result = current_provider.stream(
+                            task, on_progress=emit
+                        )
                     finished_at = utc_now()
                     trajectory.append(
                         TrajectoryStep(
@@ -222,7 +230,10 @@ class Engine:
                             ProgressEvent(
                                 phase="error",
                                 message="provider_error",
-                                data={"error": str(exc), "provider": current_provider.name},
+                                data={
+                                    "error": str(exc),
+                                    "provider": current_provider.name,
+                                },
                             )
                         )
                         return self._final_report(
@@ -263,7 +274,10 @@ class Engine:
                 elapsed_seconds,
                 output_text,
             )
-            if task.budget.max_total_tokens is not None and budget_usage.total_tokens is None:
+            if (
+                task.budget.max_total_tokens is not None
+                and budget_usage.total_tokens is None
+            ):
                 emit(
                     ProgressEvent(
                         phase="verification",
@@ -276,6 +290,25 @@ class Engine:
             # Fallback errors don't count as failures if we succeeded
             final_errors = [] if output_text else errors
             success = verification.passed and not budget_exceeded and not final_errors
+
+            # Determine typed outcome
+            if success:
+                outcome = Outcome.SUCCESS
+            elif budget_exceeded:
+                outcome = Outcome.BUDGET_EXCEEDED
+            elif not verification.passed:
+                outcome = Outcome.VERIFICATION_FAILED
+            elif final_errors:
+                if any("provider" in e.lower() for e in final_errors):
+                    outcome = Outcome.PROVIDER_ERROR
+                else:
+                    outcome = Outcome.TOOL_ERROR
+            else:
+                outcome = Outcome.PROVIDER_ERROR
+
+            # Partial if we have output but budget was exceeded
+            partial = budget_exceeded and bool(output_text)
+
             emit(
                 ProgressEvent(
                     phase="complete",
@@ -285,6 +318,8 @@ class Engine:
             )
             return ExecutionReport(
                 success=success,
+                outcome=outcome,
+                partial=partial,
                 task_id=task.task_id,
                 provider=successful_provider.name,
                 model=task.model,
@@ -336,8 +371,12 @@ class Engine:
 
         # Convert float tokens to int for check_budget_limits
         # normalize_usage returns Optional[float|int] but tokens are always int or None at runtime
-        output_tokens_int = int(output_tokens) if isinstance(output_tokens, (int, float)) else None
-        total_tokens_int = int(total_tokens) if isinstance(total_tokens, (int, float)) else None
+        output_tokens_int = (
+            int(output_tokens) if isinstance(output_tokens, (int, float)) else None
+        )
+        total_tokens_int = (
+            int(total_tokens) if isinstance(total_tokens, (int, float)) else None
+        )
 
         # Shared limit checking logic: see usage.check_budget_limits()
         limits_exceeded = check_budget_limits(

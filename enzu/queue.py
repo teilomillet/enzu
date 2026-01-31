@@ -50,6 +50,7 @@ Scaling behavior:
     - Scales down when queue_depth < scale_down_threshold * workers
     - Scaling is gradual (one worker at a time per interval)
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -71,6 +72,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class TaskRequest:
     """A queued task request."""
+
     task: Union[str, TaskSpec, Dict[str, Any]]
     kwargs: Dict[str, Any]
     future: asyncio.Future
@@ -80,11 +82,12 @@ class TaskRequest:
 @dataclass
 class QueueStats:
     """Queue statistics snapshot."""
-    queued: int          # tasks waiting in queue
-    active: int          # tasks being processed
-    workers: int         # current worker count
-    completed: int       # total completed tasks
-    failed: int          # total failed tasks
+
+    queued: int  # tasks waiting in queue
+    active: int  # tasks being processed
+    workers: int  # current worker count
+    completed: int  # total completed tasks
+    failed: int  # total failed tasks
     avg_latency_ms: float  # average task latency
 
 
@@ -107,9 +110,9 @@ class TaskQueue:
         max_workers: int = 20,
         queue_size: int = 1000,
         # Scaling thresholds (ratio of queue_depth to worker_count)
-        scale_up_threshold: float = 2.0,    # scale up if queue > 2x workers
+        scale_up_threshold: float = 2.0,  # scale up if queue > 2x workers
         scale_down_threshold: float = 0.5,  # scale down if queue < 0.5x workers
-        scale_interval: float = 1.0,        # seconds between scaling decisions
+        scale_interval: float = 1.0,  # seconds between scaling decisions
         # Default task parameters
         default_mode: Optional[str] = None,
         default_tokens: Optional[int] = None,
@@ -175,6 +178,7 @@ class TaskQueue:
 
         # Initialize shared provider (pooled for connection reuse)
         from enzu.api import _resolve_provider
+
         self._provider = _resolve_provider(
             self._provider_name,
             api_key=self._api_key,
@@ -192,7 +196,10 @@ class TaskQueue:
 
         logger.info(
             "TaskQueue started: provider=%s, model=%s, workers=%d, queue_size=%d",
-            self._provider_name, self._model, self._min_workers, self._queue_size
+            self._provider_name,
+            self._model,
+            self._min_workers,
+            self._queue_size,
         )
 
     async def stop(self, timeout: float = 30.0) -> None:
@@ -219,7 +226,9 @@ class TaskQueue:
             try:
                 await asyncio.wait_for(self._queue.join(), timeout=timeout)
             except asyncio.TimeoutError:
-                logger.warning("Queue drain timeout, %d tasks remaining", self._queue.qsize())
+                logger.warning(
+                    "Queue drain timeout, %d tasks remaining", self._queue.qsize()
+                )
 
         # Cancel workers
         for worker in self._workers:
@@ -234,9 +243,14 @@ class TaskQueue:
 
         # Close provider pool connections
         from enzu.providers.pool import close_all_providers
+
         close_all_providers()
 
-        logger.info("TaskQueue stopped: completed=%d, failed=%d", self._completed_count, self._failed_count)
+        logger.info(
+            "TaskQueue stopped: completed=%d, failed=%d",
+            self._completed_count,
+            self._failed_count,
+        )
 
     async def submit(
         self,
@@ -387,8 +401,16 @@ class TaskQueue:
                         "model": self._model,
                         "provider": self._provider,
                         **({"mode": self._default_mode} if self._default_mode else {}),
-                        **({"tokens": self._default_tokens} if self._default_tokens else {}),
-                        **({"temperature": self._default_temperature} if self._default_temperature else {}),
+                        **(
+                            {"tokens": self._default_tokens}
+                            if self._default_tokens
+                            else {}
+                        ),
+                        **(
+                            {"temperature": self._default_temperature}
+                            if self._default_temperature
+                            else {}
+                        ),
                         **request.kwargs,
                     }
 
@@ -419,12 +441,14 @@ class TaskQueue:
 
                     # Execute
                     if self._provider is None:
-                        raise RuntimeError("Provider not initialized. Call start() first.")
+                        raise RuntimeError(
+                            "Provider not initialized. Call start() first."
+                        )
                     if mode == "rlm" or data is not None:
                         rlm_engine = RLMEngine()
                         rlm_report = rlm_engine.run(
-                            spec, 
-                            self._provider, 
+                            spec,
+                            self._provider,
                             data=data or "",
                             on_progress=on_progress,
                         )
@@ -489,7 +513,8 @@ class TaskQueue:
                         self._spawn_worker()
                         logger.debug(
                             "Scaled up: workers=%d, queue=%d",
-                            len(self._workers), queue_depth
+                            len(self._workers),
+                            queue_depth,
                         )
 
                 # Scale down: queue is draining
@@ -498,7 +523,8 @@ class TaskQueue:
                         self._remove_worker()
                         logger.debug(
                             "Scaled down: workers=%d, queue=%d",
-                            len(self._workers), queue_depth
+                            len(self._workers),
+                            queue_depth,
                         )
 
             except asyncio.CancelledError:

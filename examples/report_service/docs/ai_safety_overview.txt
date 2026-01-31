@@ -1,0 +1,31 @@
+Document: AI Safety Overview
+Author: Research Team Alpha
+Date: 2024-01-15
+
+Artificial intelligence safety is a field focused on ensuring AI systems behave
+as intended and do not cause unintended harm. Key areas include:
+
+1. Alignment: Ensuring AI goals match human values. This connects to work on
+   reward modeling (see: reward_modeling_paper.txt) and interpretability.
+
+2. Robustness: Making AI systems reliable under distribution shift and
+   adversarial conditions. Related to the evaluation frameworks discussed
+   in evaluation_frameworks.txt.
+
+3. Scalable oversight: As AI systems become more capable, we need methods
+   to supervise them effectively. This is addressed in governance_framework.txt.
+
+4. Interpretability: Understanding how AI systems make decisions. Critical
+   for debugging and trust. See connections to evaluation methods.
+
+The field draws from computer science, philosophy, and cognitive science.
+Major research labs including Anthropic, OpenAI, and DeepMind have dedicated
+safety teams. Coordination between labs is discussed in governance_framework.txt.
+
+Key challenges:
+- Specification gaming: AI finds unintended shortcuts
+- Mesa-optimization: AI develops internal goals misaligned with training
+- Distributional shift: AI fails in novel situations
+
+Mitigation strategies include RLHF (see reward_modeling_paper.txt), 
+constitutional AI, and extensive red-teaming.

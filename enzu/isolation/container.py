@@ -39,7 +39,7 @@ Architecture:
 
 Usage:
     from enzu.isolation.container import ContainerSandboxRunner, ContainerConfig
-    
+
     runner = ContainerSandboxRunner()
     result = runner.run(
         code="FINAL(sum(data))",
@@ -53,6 +53,7 @@ Requirements:
     - Sufficient permissions to run containers
 
 """
+
 from __future__ import annotations
 
 import json
@@ -74,6 +75,7 @@ logger = logging.getLogger(__name__)
 
 class IsolationLevel(Enum):
     """Isolation level for container sandbox."""
+
     # Subprocess only (Phase 1) - fastest, weakest isolation
     SUBPROCESS = "subprocess"
     # Docker container with basic isolation
@@ -90,59 +92,67 @@ class IsolationLevel(Enum):
 class ContainerConfig:
     """
     Configuration for container-based sandbox execution.
-    
+
     The image field accepts either:
     - A string Docker tag (e.g., "python:3.11-slim")
     - A SandboxImage instance (from enzu.sandbox.image)
     - A BuiltImage instance (from SandboxImage.build())
-    
+
     When SandboxImage is passed, it's built on first use and cached.
     """
-    
+
     # Resource limits
     max_cpu_seconds: float = 30.0
     max_memory_mb: int = 512
     max_pids: int = 50
-    
+
     # Network isolation: "none" (default, no network) or "egress_proxy" (controlled)
     network_mode: str = "none"
-    
+
     # Allowed egress endpoints (when network_mode="egress_proxy")
     allowed_egress: List[str] = field(default_factory=list)
-    
+
     # Wall-clock timeout
     timeout_seconds: float = 60.0
-    
+
     # Docker image: string tag, SandboxImage, or BuiltImage
     # SandboxImage/BuiltImage from enzu.sandbox.image module
     image: Any = "python:3.11-slim"
-    
+
     # Enable seccomp profile for syscall filtering
     enable_seccomp: bool = True
-    
+
     # Read-only rootfs (scratch in tmpfs)
     read_only_rootfs: bool = True
-    
+
     # Tmpfs size for scratch space
     tmpfs_size_mb: int = 64
-    
+
     # Allowed Python imports in sandbox
-    allowed_imports: Set[str] = field(default_factory=lambda: {
-        "re", "math", "json", "datetime", "collections", "itertools", "functools"
-    })
-    
+    allowed_imports: Set[str] = field(
+        default_factory=lambda: {
+            "re",
+            "math",
+            "json",
+            "datetime",
+            "collections",
+            "itertools",
+            "functools",
+        }
+    )
+
     # Custom seccomp profile path (None = use default restrictive profile)
     seccomp_profile: Optional[str] = None
-    
+
     def get_image_tag(self) -> str:
         """
         Resolve image to Docker tag string.
-        
+
         Handles three cases:
         1. String: return as-is
         2. BuiltImage: return .tag
         3. SandboxImage: build and return tag
-        
+
         Returns:
             Docker image tag string
         """
@@ -150,16 +160,16 @@ class ContainerConfig:
         # SandboxImage/BuiltImage are in enzu.sandbox.image
         if isinstance(self.image, str):
             return self.image
-        
+
         # Check for BuiltImage (has .tag attribute)
         if hasattr(self.image, "tag") and isinstance(self.image.tag, str):
             return self.image.tag
-        
+
         # Check for SandboxImage (has .build() method)
         if hasattr(self.image, "build") and callable(self.image.build):
             built = self.image.build()
             return built.tag
-        
+
         # Fallback: convert to string
         return str(self.image)
 
@@ -174,40 +184,106 @@ DEFAULT_SECCOMP_PROFILE = {
         {
             "names": [
                 # Process
-                "exit", "exit_group", "rt_sigreturn", "rt_sigaction",
-                "rt_sigprocmask", "getpid", "gettid", "getuid", "geteuid",
-                "getgid", "getegid", "getppid",
+                "exit",
+                "exit_group",
+                "rt_sigreturn",
+                "rt_sigaction",
+                "rt_sigprocmask",
+                "getpid",
+                "gettid",
+                "getuid",
+                "geteuid",
+                "getgid",
+                "getegid",
+                "getppid",
                 # Memory
-                "brk", "mmap", "munmap", "mprotect", "mremap",
+                "brk",
+                "mmap",
+                "munmap",
+                "mprotect",
+                "mremap",
                 # File (read-only operations)
-                "read", "pread64", "readv", "write", "writev", "pwrite64",
-                "open", "openat", "close", "fstat", "newfstatat", "stat",
-                "lstat", "access", "faccessat", "lseek", "dup", "dup2",
-                "fcntl", "flock", "fsync", "fdatasync", "getcwd", "readlink",
-                "readlinkat", "getdents", "getdents64",
+                "read",
+                "pread64",
+                "readv",
+                "write",
+                "writev",
+                "pwrite64",
+                "open",
+                "openat",
+                "close",
+                "fstat",
+                "newfstatat",
+                "stat",
+                "lstat",
+                "access",
+                "faccessat",
+                "lseek",
+                "dup",
+                "dup2",
+                "fcntl",
+                "flock",
+                "fsync",
+                "fdatasync",
+                "getcwd",
+                "readlink",
+                "readlinkat",
+                "getdents",
+                "getdents64",
                 # Time
-                "clock_gettime", "clock_getres", "gettimeofday", "nanosleep",
+                "clock_gettime",
+                "clock_getres",
+                "gettimeofday",
+                "nanosleep",
                 # Misc
-                "futex", "set_robust_list", "get_robust_list",
-                "getrandom", "sched_yield", "sched_getaffinity",
-                "arch_prctl", "set_tid_address", "prctl", "uname",
-                "poll", "ppoll", "select", "pselect6", "epoll_create1",
-                "epoll_ctl", "epoll_wait", "epoll_pwait", "eventfd2",
-                "pipe", "pipe2", "ioctl",
+                "futex",
+                "set_robust_list",
+                "get_robust_list",
+                "getrandom",
+                "sched_yield",
+                "sched_getaffinity",
+                "arch_prctl",
+                "set_tid_address",
+                "prctl",
+                "uname",
+                "poll",
+                "ppoll",
+                "select",
+                "pselect6",
+                "epoll_create1",
+                "epoll_ctl",
+                "epoll_wait",
+                "epoll_pwait",
+                "eventfd2",
+                "pipe",
+                "pipe2",
+                "ioctl",
             ],
-            "action": "SCMP_ACT_ALLOW"
+            "action": "SCMP_ACT_ALLOW",
         },
         # Block network operations (EACCES)
         {
             "names": [
-                "socket", "connect", "accept", "accept4", "bind", "listen",
-                "sendto", "recvfrom", "sendmsg", "recvmsg", "shutdown",
-                "getsockname", "getpeername", "socketpair", "setsockopt",
+                "socket",
+                "connect",
+                "accept",
+                "accept4",
+                "bind",
+                "listen",
+                "sendto",
+                "recvfrom",
+                "sendmsg",
+                "recvmsg",
+                "shutdown",
+                "getsockname",
+                "getpeername",
+                "socketpair",
+                "setsockopt",
                 "getsockopt",
             ],
             "action": "SCMP_ACT_ERRNO",
             "args": [],
-            "errnoRet": 1  # EPERM
+            "errnoRet": 1,  # EPERM
         },
         # Block fork/clone (no fork bombs)
         # Note: execve/execveat are allowed because podman run needs them to start Python.
@@ -215,13 +291,16 @@ DEFAULT_SECCOMP_PROFILE = {
         # prevent escape even with execve.
         {
             "names": [
-                "clone", "clone3", "fork", "vfork",
+                "clone",
+                "clone3",
+                "fork",
+                "vfork",
             ],
             "action": "SCMP_ACT_ERRNO",
             "args": [],
-            "errnoRet": 1  # EPERM
+            "errnoRet": 1,  # EPERM
         },
-    ]
+    ],
 }
 
 
@@ -452,15 +531,19 @@ if __name__ == "__main__":
 def _check_container_runtime_available() -> bool:
     """Check if any container runtime (Podman or Docker) is available."""
     from enzu.isolation.runtime import _check_podman_works, _check_docker_works
+
     # Try Podman first (preferred for rootless/daemonless security), then Docker
     return _check_podman_works() or _check_docker_works()
 
 
-def _pull_image_if_needed(image: str, timeout: float = 120, runtime_cmd: Optional[str] = None) -> bool:
+def _pull_image_if_needed(
+    image: str, timeout: float = 120, runtime_cmd: Optional[str] = None
+) -> bool:
     """Pull container image if not present locally. Works with Podman or Docker."""
     if runtime_cmd is None:
         # Auto-detect runtime
         from enzu.isolation.runtime import detect_runtime, get_runtime_command
+
         try:
             runtime_cmd = get_runtime_command(detect_runtime())
         except RuntimeError:
@@ -491,13 +574,13 @@ def _pull_image_if_needed(image: str, timeout: float = 120, runtime_cmd: Optiona
 class ContainerSandboxRunner:
     """
     Execute code in Docker container with gov-grade isolation.
-    
+
     Each execution spawns a new container with:
     - Network isolation (network=none by default)
     - seccomp syscall filtering
     - Resource limits via cgroups (CPU, memory, pids)
     - Read-only rootfs with tmpfs scratch
-    
+
     Example:
         runner = ContainerSandboxRunner()
         result = runner.run(
@@ -506,12 +589,12 @@ class ContainerSandboxRunner:
             config=ContainerConfig(max_memory_mb=256),
         )
         print(result.final_answer)  # "6"
-    
+
     Fallback:
         When Docker is unavailable, falls back to subprocess isolation.
         Set fallback_to_subprocess=False to require container isolation.
     """
-    
+
     def __init__(
         self,
         output_limit: int = 8192,
@@ -532,6 +615,7 @@ class ContainerSandboxRunner:
         """Check container runtime availability (cached). Supports Podman and Docker."""
         if self._container_available is None:
             from enzu.isolation.runtime import detect_runtime, get_runtime_command
+
             try:
                 runtime = detect_runtime()
                 self._runtime_command = get_runtime_command(runtime)
@@ -540,16 +624,18 @@ class ContainerSandboxRunner:
             except RuntimeError:
                 self._container_available = False
                 self._runtime_command = None
-                logger.warning("No container runtime available (tried Podman and Docker)")
+                logger.warning(
+                    "No container runtime available (tried Podman and Docker)"
+                )
         return self._container_available
-    
+
     def _get_seccomp_profile_path(self) -> str:
         """Get or create seccomp profile file."""
         if self._seccomp_profile_path is None:
             # Write profile to temp file
             fd, path = tempfile.mkstemp(suffix=".json", prefix="enzu_seccomp_")
             try:
-                with os.fdopen(fd, 'w') as f:
+                with os.fdopen(fd, "w") as f:
                     json.dump(DEFAULT_SECCOMP_PROFILE, f)
                 self._seccomp_profile_path = path
             except Exception:
@@ -557,7 +643,7 @@ class ContainerSandboxRunner:
                 os.unlink(path)
                 raise
         return self._seccomp_profile_path
-    
+
     def run(
         self,
         code: str,
@@ -581,15 +667,16 @@ class ContainerSandboxRunner:
         """
         if config is None:
             config = ContainerConfig()
-        
+
         if namespace is None:
             namespace = {}
-        
+
         # Check Docker availability
         if not self._ensure_docker():
             if self._fallback:
                 logger.debug("Falling back to subprocess isolation")
                 from enzu.isolation.runner import SandboxRunner, SandboxConfig
+
                 subprocess_config = SandboxConfig(
                     max_cpu_seconds=config.max_cpu_seconds,
                     max_memory_mb=config.max_memory_mb,
@@ -615,7 +702,7 @@ class ContainerSandboxRunner:
                     resource_usage={},
                     exit_code=-1,
                 )
-        
+
         # Serialize namespace
         try:
             namespace_bytes = pickle.dumps(namespace)
@@ -629,16 +716,17 @@ class ContainerSandboxRunner:
                 resource_usage={},
                 exit_code=-1,
             )
-        
+
         # Resolve image to Docker tag (handles SandboxImage/BuiltImage)
         # get_image_tag() builds SandboxImage if needed
         image_tag = config.get_image_tag()
-        
+
         # Ensure image is available (pull if not local)
         if not _pull_image_if_needed(image_tag, runtime_cmd=self._runtime_command):
             if self._fallback:
                 logger.warning("Image pull failed, falling back to subprocess")
                 from enzu.isolation.runner import SandboxRunner, SandboxConfig
+
                 subprocess_config = SandboxConfig(
                     max_cpu_seconds=config.max_cpu_seconds,
                     max_memory_mb=config.max_memory_mb,
@@ -662,10 +750,10 @@ class ContainerSandboxRunner:
                 resource_usage={},
                 exit_code=-1,
             )
-        
+
         # Determine if IPC mode should be used
         use_ipc = llm_query is not None or llm_batch is not None
-        
+
         # Build input payload
         payload = {
             "code": code,
@@ -674,23 +762,21 @@ class ContainerSandboxRunner:
             "output_limit": self._output_limit,
             "ipc_enabled": use_ipc,
         }
-        
+
         # Build container command (works with both Podman and Docker)
         runtime_cmd = self._runtime_command or "podman"
         container_args = [
-            runtime_cmd, "run",
+            runtime_cmd,
+            "run",
             "--rm",  # Remove container after exit
-            "-i",    # Interactive (stdin)
-
+            "-i",  # Interactive (stdin)
             # Run as non-root user (UID 1000) for defense in depth
             "--user=1000:1000",
-
             # Resource limits (cgroups)
             f"--memory={config.max_memory_mb}m",
             f"--memory-swap={config.max_memory_mb}m",  # No swap
             f"--pids-limit={config.max_pids}",
             f"--cpus={config.max_cpu_seconds / config.timeout_seconds}",  # CPU quota
-
             # Network isolation
             f"--network={config.network_mode}",
         ]
@@ -710,13 +796,17 @@ class ContainerSandboxRunner:
 
         # No new privileges
         container_args.append("--security-opt=no-new-privileges")
-        
+
         # Image and command (use resolved image_tag from above)
-        container_args.extend([
-            image_tag,
-            "python", "-c", _CONTAINER_WORKER_SCRIPT,
-        ])
-        
+        container_args.extend(
+            [
+                image_tag,
+                "python",
+                "-c",
+                _CONTAINER_WORKER_SCRIPT,
+            ]
+        )
+
         # Run container with IPC or legacy mode
         if use_ipc:
             return self._run_with_ipc(
@@ -732,7 +822,7 @@ class ContainerSandboxRunner:
                 payload=payload,
                 timeout=config.timeout_seconds,
             )
-    
+
     def _run_with_ipc(
         self,
         container_args: List[str],
@@ -751,7 +841,7 @@ class ContainerSandboxRunner:
                 stderr=subprocess.PIPE,
                 text=False,  # Binary mode for IPC
             )
-            
+
             # Cast is safe: stdin/stdout are guaranteed non-None when PIPE is used
             bridge = IPCBridge(
                 stdin=cast(BinaryIO, proc.stdin),
@@ -759,12 +849,12 @@ class ContainerSandboxRunner:
                 llm_query=llm_query,
                 llm_batch=llm_batch,
             )
-            
+
             result_data = bridge.run(payload, timeout=timeout)
-            
+
             proc.wait(timeout=5)
             exit_code = proc.returncode
-            
+
         except TimeoutError as e:
             if proc:
                 proc.kill()
@@ -785,7 +875,9 @@ class ContainerSandboxRunner:
             stderr_content = ""
             if proc and proc.stderr:
                 try:
-                    stderr_content = proc.stderr.read().decode("utf-8", errors="replace")[:500]
+                    stderr_content = proc.stderr.read().decode(
+                        "utf-8", errors="replace"
+                    )[:500]
                 except Exception:
                     pass
             error_msg = str(e)
@@ -811,14 +903,14 @@ class ContainerSandboxRunner:
                 resource_usage={},
                 exit_code=-1,
             )
-        
+
         # Deserialize namespace updates
         try:
             updates_bytes = base64.b64decode(result_data.get("namespace_updates", ""))
             namespace_updates = pickle.loads(updates_bytes) if updates_bytes else {}
         except Exception:
             namespace_updates = {}
-        
+
         return SandboxResult(
             stdout=result_data.get("stdout", ""),
             error=result_data.get("error"),
@@ -827,7 +919,7 @@ class ContainerSandboxRunner:
             resource_usage={},
             exit_code=exit_code,
         )
-    
+
     def _run_legacy(
         self,
         container_args: List[str],
@@ -843,14 +935,14 @@ class ContainerSandboxRunner:
                 stderr=subprocess.PIPE,
                 text=True,
             )
-            
+
             stdout, stderr = proc.communicate(
                 input=json.dumps(payload),
                 timeout=timeout,
             )
-            
+
             exit_code = proc.returncode
-            
+
         except subprocess.TimeoutExpired:
             proc.kill()
             proc.wait()
@@ -872,20 +964,20 @@ class ContainerSandboxRunner:
                 resource_usage={},
                 exit_code=-1,
             )
-        
+
         # Parse result
         if exit_code != 0:
             error_msg = f"Container exited with code {exit_code}"
             resource_exceeded = False
-            
+
             if exit_code == 137:  # SIGKILL (OOM killer)
                 error_msg = "Killed: memory limit exceeded"
                 resource_exceeded = True
             elif stderr:
                 error_msg = f"{error_msg}: {stderr[:500]}"
-            
+
             return SandboxResult(
-                stdout=stdout[:self._output_limit] if stdout else "",
+                stdout=stdout[: self._output_limit] if stdout else "",
                 error=error_msg,
                 final_answer=None,
                 namespace_updates={},
@@ -893,7 +985,7 @@ class ContainerSandboxRunner:
                 exit_code=exit_code,
                 resource_exceeded=resource_exceeded,
             )
-        
+
         # Parse JSON result
         try:
             result_data = json.loads(stdout)
@@ -906,14 +998,14 @@ class ContainerSandboxRunner:
                 resource_usage={},
                 exit_code=exit_code,
             )
-        
+
         # Deserialize namespace updates
         try:
             updates_bytes = base64.b64decode(result_data.get("namespace_updates", ""))
             namespace_updates = pickle.loads(updates_bytes) if updates_bytes else {}
         except Exception:
             namespace_updates = {}
-        
+
         return SandboxResult(
             stdout=result_data.get("stdout", ""),
             error=result_data.get("error"),
@@ -922,7 +1014,7 @@ class ContainerSandboxRunner:
             resource_usage={},
             exit_code=exit_code,
         )
-    
+
     def cleanup(self) -> None:
         """Clean up temporary files."""
         if self._seccomp_profile_path and os.path.exists(self._seccomp_profile_path):
@@ -936,14 +1028,14 @@ class ContainerSandboxRunner:
 class ContainerSandbox:
     """
     Stateful sandbox using container isolation.
-    
+
     Maintains namespace across multiple exec() calls.
     Drop-in replacement for PythonSandbox when container isolation is required.
-    
+
     Note: Each exec() spawns a new container (expensive but isolated).
     For batch operations, accumulate code and exec() once.
     """
-    
+
     def __init__(
         self,
         *,
@@ -963,16 +1055,16 @@ class ContainerSandbox:
         self._config = config or ContainerConfig()
         self._llm_query = llm_query
         self._llm_batch = llm_batch
-        
+
         if allowed_imports:
             self._config.allowed_imports = set(allowed_imports)
-        
+
         self._namespace: Dict[str, Any] = dict(namespace or {})
         if data is not None:
             self._namespace["data"] = data
-        
+
         self._answer: Dict[str, Any] = {"content": "", "ready": False}
-    
+
     def exec(self, code: str) -> SandboxResult:
         """Execute code in container, updating internal namespace."""
         result = self._runner.run(
@@ -982,32 +1074,32 @@ class ContainerSandbox:
             llm_query=self._llm_query,
             llm_batch=self._llm_batch,
         )
-        
+
         # Update namespace with results
         if result.namespace_updates:
             self._namespace.update(result.namespace_updates)
-        
+
         # Update answer state
         if result.final_answer is not None:
             self._answer["content"] = result.final_answer
             self._answer["ready"] = True
-        
+
         return result
-    
+
     @property
     def answer(self) -> Dict[str, Any]:
         """Access answer state set by FINAL()."""
         return self._answer
-    
+
     def get_global(self, name: str) -> Any:
         """Get variable from namespace."""
         return self._namespace.get(name)
-    
+
     @property
     def namespace(self) -> Dict[str, Any]:
         """Current namespace state."""
         return self._namespace
-    
+
     def cleanup(self) -> None:
         """Clean up resources."""
         self._runner.cleanup()

@@ -29,6 +29,7 @@ Features:
 - llm_query/llm_batch available via IPC protocol
 - No network isolation (Phase 4: container/microVM)
 """
+
 from __future__ import annotations
 
 import pickle
@@ -44,56 +45,64 @@ from enzu.isolation.ipc import IPCBridge
 @dataclass
 class SandboxConfig:
     """Resource limits for isolated sandbox execution."""
-    
+
     # CPU time limit in seconds (RLIMIT_CPU on Unix)
     max_cpu_seconds: float = 30.0
-    
+
     # Memory limit in MB (RLIMIT_AS on Unix)
     max_memory_mb: int = 512
-    
+
     # Max child processes (RLIMIT_NPROC on Unix)
     max_pids: int = 10
-    
+
     # Max open file descriptors (RLIMIT_NOFILE on Unix)
     max_fds: int = 64
-    
+
     # Wall-clock timeout for subprocess.communicate()
     timeout_seconds: float = 60.0
-    
+
     # Python path (None = same as parent)
     python_executable: Optional[str] = None
-    
+
     # Allowed imports in sandbox
-    allowed_imports: Set[str] = field(default_factory=lambda: {
-        "re", "math", "json", "datetime", "collections", "itertools", "functools"
-    })
+    allowed_imports: Set[str] = field(
+        default_factory=lambda: {
+            "re",
+            "math",
+            "json",
+            "datetime",
+            "collections",
+            "itertools",
+            "functools",
+        }
+    )
 
 
 @dataclass
 class SandboxResult:
     """Result from isolated sandbox execution."""
-    
+
     # Captured stdout
     stdout: str
-    
+
     # Error message if execution failed
     error: Optional[str]
-    
+
     # FINAL() content if called
     final_answer: Optional[str]
-    
+
     # Namespace after execution (picklable values only)
     namespace_updates: Dict[str, Any]
-    
+
     # Resource usage (CPU time, memory)
     resource_usage: Dict[str, Any]
-    
+
     # Exit code from subprocess
     exit_code: int
-    
+
     # True if killed by timeout
     timed_out: bool = False
-    
+
     # True if killed by resource limit
     resource_exceeded: bool = False
 
@@ -358,12 +367,12 @@ if __name__ == "__main__":
 class SandboxRunner:
     """
     Execute code in isolated subprocess with resource limits.
-    
+
     Each call spawns a new subprocess with:
     - Separate address space (no shared memory with parent)
     - OS-enforced resource limits (CPU, memory, file descriptors)
     - IPC-based communication for llm_query/llm_batch support
-    
+
     Example:
         runner = SandboxRunner(
             llm_query=lambda p: "response",
@@ -376,7 +385,7 @@ class SandboxRunner:
         )
         print(result.final_answer)  # "2"
     """
-    
+
     def __init__(
         self,
         output_limit: int = 8192,
@@ -392,7 +401,7 @@ class SandboxRunner:
         self._output_limit = output_limit
         self._llm_query = llm_query
         self._llm_batch = llm_batch
-    
+
     def run(
         self,
         code: str,
@@ -401,21 +410,21 @@ class SandboxRunner:
     ) -> SandboxResult:
         """
         Execute code in isolated subprocess.
-        
+
         Args:
             code: Python code to execute
             namespace: Initial namespace (must be picklable)
             config: Resource limits and settings
-        
+
         Returns:
             SandboxResult with stdout, error, final_answer, etc.
         """
         if config is None:
             config = SandboxConfig()
-        
+
         if namespace is None:
             namespace = {}
-        
+
         # Serialize namespace
         try:
             namespace_bytes = pickle.dumps(namespace)
@@ -429,7 +438,7 @@ class SandboxRunner:
                 resource_usage={},
                 exit_code=-1,
             )
-        
+
         # Build input payload
         enable_llm = self._llm_query is not None or self._llm_batch is not None
         payload = {
@@ -445,9 +454,9 @@ class SandboxRunner:
             "output_limit": self._output_limit,
             "enable_llm": enable_llm,
         }
-        
+
         python_exe = config.python_executable or sys.executable
-        
+
         # Run in subprocess with binary mode for IPC
         try:
             proc = subprocess.Popen(
@@ -457,7 +466,7 @@ class SandboxRunner:
                 stderr=subprocess.PIPE,
                 text=False,  # Binary mode for IPC protocol
             )
-            
+
             # Use IPCBridge for communication
             # Cast is safe: stdin/stdout are guaranteed non-None when PIPE is used
             bridge = IPCBridge(
@@ -466,13 +475,13 @@ class SandboxRunner:
                 llm_query=self._llm_query,
                 llm_batch=self._llm_batch,
             )
-            
+
             result_data = bridge.run(payload, timeout=config.timeout_seconds)
-            
+
             # Wait for process to finish
             proc.wait(timeout=5.0)
             exit_code = proc.returncode
-            
+
         except TimeoutError:
             proc.kill()
             proc.wait()
@@ -497,7 +506,9 @@ class SandboxRunner:
             proc.wait()
             error_msg = str(e)
             if stderr:
-                error_msg = f"{error_msg}: {stderr.decode('utf-8', errors='replace')[:500]}"
+                error_msg = (
+                    f"{error_msg}: {stderr.decode('utf-8', errors='replace')[:500]}"
+                )
             return SandboxResult(
                 stdout="",
                 error=error_msg,
@@ -517,21 +528,21 @@ class SandboxRunner:
                 resource_usage={},
                 exit_code=-1,
             )
-        
+
         # Check exit code for resource limit signals
         if exit_code != 0:
             resource_exceeded = False
             error_msg = f"Subprocess exited with code {exit_code}"
-            
+
             if exit_code == -9:  # SIGKILL (OOM killer)
                 error_msg = "Killed: memory limit exceeded"
                 resource_exceeded = True
             elif exit_code == -24:  # SIGXCPU
                 error_msg = "Killed: CPU time limit exceeded"
                 resource_exceeded = True
-            
+
             return SandboxResult(
-                stdout=result_data.get("stdout", "")[:self._output_limit],
+                stdout=result_data.get("stdout", "")[: self._output_limit],
                 error=error_msg,
                 final_answer=None,
                 namespace_updates={},
@@ -539,14 +550,14 @@ class SandboxRunner:
                 exit_code=exit_code,
                 resource_exceeded=resource_exceeded,
             )
-        
+
         # Deserialize namespace updates
         try:
             updates_bytes = base64.b64decode(result_data.get("namespace_updates", ""))
             namespace_updates = pickle.loads(updates_bytes) if updates_bytes else {}
         except Exception:
             namespace_updates = {}
-        
+
         return SandboxResult(
             stdout=result_data.get("stdout", ""),
             error=result_data.get("error"),
@@ -560,13 +571,13 @@ class SandboxRunner:
 class IsolatedSandbox:
     """
     Stateful sandbox using subprocess isolation.
-    
+
     Maintains namespace across multiple exec() calls.
     Drop-in replacement for PythonSandbox when isolation is required.
-    
+
     Supports llm_query/llm_batch via IPC protocol when callbacks are provided.
     """
-    
+
     def __init__(
         self,
         *,
@@ -584,16 +595,16 @@ class IsolatedSandbox:
             llm_batch=llm_batch,
         )
         self._config = config or SandboxConfig()
-        
+
         if allowed_imports:
             self._config.allowed_imports = set(allowed_imports)
-        
+
         self._namespace: Dict[str, Any] = dict(namespace or {})
         if data is not None:
             self._namespace["data"] = data
-        
+
         self._answer: Dict[str, Any] = {"content": "", "ready": False}
-    
+
     def exec(self, code: str) -> SandboxResult:
         """Execute code, updating internal namespace."""
         result = self._runner.run(
@@ -601,27 +612,27 @@ class IsolatedSandbox:
             namespace=self._namespace,
             config=self._config,
         )
-        
+
         # Update namespace with results
         if result.namespace_updates:
             self._namespace.update(result.namespace_updates)
-        
+
         # Update answer state
         if result.final_answer is not None:
             self._answer["content"] = result.final_answer
             self._answer["ready"] = True
-        
+
         return result
-    
+
     @property
     def answer(self) -> Dict[str, Any]:
         """Access answer state set by FINAL()."""
         return self._answer
-    
+
     def get_global(self, name: str) -> Any:
         """Get variable from namespace."""
         return self._namespace.get(name)
-    
+
     @property
     def namespace(self) -> Dict[str, Any]:
         """Current namespace state."""

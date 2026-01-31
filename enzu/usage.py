@@ -166,9 +166,7 @@ def build_task_input_text(task: TaskSpec) -> str:
             "Required substrings: " + ", ".join(criteria.required_substrings)
         )
     if criteria.required_regex:
-        criteria_lines.append(
-            "Required regex: " + ", ".join(criteria.required_regex)
-        )
+        criteria_lines.append("Required regex: " + ", ".join(criteria.required_regex))
     if criteria.min_word_count:
         criteria_lines.append(f"Minimum word count: {criteria.min_word_count}")
     if criteria.case_insensitive:

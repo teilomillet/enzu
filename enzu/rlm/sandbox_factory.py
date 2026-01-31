@@ -18,6 +18,7 @@ Security note on namespace:
 - The namespace is serialized and sent to isolated processes/containers
 - Use environment variables for secrets instead (they stay in the host process)
 """
+
 from __future__ import annotations
 
 from typing import Any, Callable, Dict, List, Optional, Union
@@ -27,20 +28,36 @@ from enzu.repl import PythonSandbox
 
 # Patterns that indicate a value might be a secret
 # We check namespace keys against these to prevent accidental secret leakage
-SECRET_KEY_PATTERNS = frozenset([
-    "api_key", "apikey", "api-key",
-    "secret", "secret_key", "secretkey",
-    "token", "auth_token", "access_token", "bearer",
-    "password", "passwd", "pwd",
-    "credential", "credentials", "cred",
-    "private_key", "privatekey",
-    "auth", "authorization",
-    "key",  # Generic but catches many cases like "openai_key"
-])
+SECRET_KEY_PATTERNS = frozenset(
+    [
+        "api_key",
+        "apikey",
+        "api-key",
+        "secret",
+        "secret_key",
+        "secretkey",
+        "token",
+        "auth_token",
+        "access_token",
+        "bearer",
+        "password",
+        "passwd",
+        "pwd",
+        "credential",
+        "credentials",
+        "cred",
+        "private_key",
+        "privatekey",
+        "auth",
+        "authorization",
+        "key",  # Generic but catches many cases like "openai_key"
+    ]
+)
 
 
 class NamespaceSecretError(ValueError):
     """Raised when namespace contains likely secrets."""
+
     pass
 
 
@@ -132,7 +149,7 @@ def create_sandbox(
 ) -> Union[PythonSandbox, Any]:
     """
     Create sandbox based on isolation level.
-    
+
     Args:
         isolation: None, "subprocess", or "container"
         data: input data passed to sandbox
@@ -146,7 +163,7 @@ def create_sandbox(
         llm_query: LLM query callback (all modes via IPC for isolated)
         llm_batch: LLM batch callback (all modes via IPC for isolated)
         sandbox_image: Custom image for container mode (SandboxImage, BuiltImage, or string)
-    
+
     Returns:
         Sandbox instance. Type depends on isolation level.
     """

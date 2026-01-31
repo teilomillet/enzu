@@ -14,6 +14,7 @@ This module provides the public RLMEngine class. Implementation is split across:
 - sandbox_factory.py: sandbox creation for isolation modes
 - verification.py: output verification logic
 """
+
 from __future__ import annotations
 
 import time
@@ -64,12 +65,12 @@ def _trim_text(text: Optional[str], limit: int = 2000) -> str:
 class RLMEngine:
     """
     RLM (Recursive Language Model) engine following the paper's architecture.
-    
+
     Orchestrates multi-step execution where each step:
     1. Generates code via LLM
     2. Executes in sandbox with llm_query/llm_batch available
     3. Provides feedback and loops until FINAL() called
-    
+
     Configuration:
     - max_steps: iteration limit
     - recursive_subcalls: True = llm_query spawns sub-RLM (paper's approach)
@@ -101,7 +102,13 @@ class RLMEngine:
         self._max_steps = max_steps
         self._output_char_limit = output_char_limit
         self._allowed_imports = allowed_imports or [
-            "re", "math", "json", "datetime", "collections", "itertools", "functools"
+            "re",
+            "math",
+            "json",
+            "datetime",
+            "collections",
+            "itertools",
+            "functools",
         ]
         self._enable_pip = enable_pip
         if prompt_style not in {"paper", "extended"}:
@@ -175,13 +182,16 @@ class RLMEngine:
         import json
 
         sub_metadata = {
-            k: v for k, v in parent_task.metadata.items()
+            k: v
+            for k, v in parent_task.metadata.items()
             if k not in {"prelude_code", "prelude_allow_final"}
         }
         sub_metadata["_subcall_prompt"] = prompt
         sub_metadata["allow_weak_success_criteria"] = True
 
-        if sub_metadata.get("subcall_mode") == "research" and not str(prompt).startswith("__DECIDE__:"):
+        if sub_metadata.get("subcall_mode") == "research" and not str(
+            prompt
+        ).startswith("__DECIDE__:"):
             query = json.dumps(prompt)
             sub_metadata["prelude_code"] = (
                 "import json\n"
@@ -254,7 +264,7 @@ class RLMEngine:
     ) -> RLMExecutionReport:
         """
         Execute the RLM loop.
-        
+
         Args:
             task: Task specification with input, budget, success criteria
             provider: Primary LLM provider
@@ -266,7 +276,7 @@ class RLMEngine:
             depth: Recursion depth (internal use)
             prompt_env: Override prompt environment (internal use)
             fallback_providers: Backup providers on failure
-        
+
         Returns:
             RLMExecutionReport with success, answer, steps, errors
         """
@@ -294,10 +304,9 @@ class RLMEngine:
             task = task.model_copy(update={"max_output_tokens": max_output_tokens})
 
         # Require explicit success criteria
-        if (
-            not _has_strong_success_criteria(task.success_criteria)
-            and not task.metadata.get("allow_weak_success_criteria")
-        ):
+        if not _has_strong_success_criteria(
+            task.success_criteria
+        ) and not task.metadata.get("allow_weak_success_criteria"):
             errors.append("success_criteria_missing_or_weak")
             budget_usage = build_budget_usage(task.budget, {}, 0.0)
             return RLMExecutionReport(
@@ -360,13 +369,16 @@ class RLMEngine:
             if context_path:
                 try:
                     from enzu.tools.context import ctx_load, ctx_stats
+
                     path = Path(context_path)
                     if path.exists():
                         ctx_load(str(path))
                     context_before = ctx_stats()
                     telemetry.log(
-                        "info", "context_loaded",
-                        path=str(path), stats=context_before,
+                        "info",
+                        "context_loaded",
+                        path=str(path),
+                        stats=context_before,
                     )
                 except Exception:
                     context_before = None
@@ -387,7 +399,10 @@ class RLMEngine:
 
             # Set up subcall runner if recursive mode enabled
             if self._recursive_subcalls and depth < self._max_recursion_depth:
-                def subcall_runner(prompt: str, max_output: Optional[int], max_total: Optional[int]) -> RLMExecutionReport:
+
+                def subcall_runner(
+                    prompt: str, max_output: Optional[int], max_total: Optional[int]
+                ) -> RLMExecutionReport:
                     return self._run_subcall(
                         parent_task=task,
                         provider=provider,
@@ -397,6 +412,7 @@ class RLMEngine:
                         max_total_tokens=max_total,
                         sandbox_factory=sandbox_factory,
                     )
+
                 executor.set_subcall_runner(subcall_runner)
 
             # Create sandbox
@@ -411,7 +427,8 @@ class RLMEngine:
                     sandbox_namespace["budget_status"] = lambda: {
                         **token_pool.snapshot(),
                         "model": task.model,
-                        "output_cap": task.max_output_tokens or DEFAULT_MAX_OUTPUT_TOKENS,
+                        "output_cap": task.max_output_tokens
+                        or DEFAULT_MAX_OUTPUT_TOKENS,
                         "remaining_output_tokens": budget_tracker.remaining_output_tokens(),
                         "critical_threshold": critical_threshold,
                     }
@@ -456,7 +473,8 @@ class RLMEngine:
                 with telemetry.span("rlm.prelude", code_len=len(prelude_code)):
                     result = sandbox.exec(prelude_code)
                 telemetry.log(
-                    "info", "rlm_prelude_result",
+                    "info",
+                    "rlm_prelude_result",
                     stdout=_trim_text(result.stdout),
                     error=_trim_text(result.error),
                 )
@@ -483,7 +501,8 @@ class RLMEngine:
                                 errors=[],
                             )
                         telemetry.log(
-                            "info", "rlm_prelude_final_reject",
+                            "info",
+                            "rlm_prelude_final_reject",
                             reasons=verification.reasons,
                         )
                     sandbox.answer["ready"] = False
@@ -507,7 +526,8 @@ class RLMEngine:
             if system_prompt_tokens is None:
                 system_prompt_tokens = estimate_tokens_conservative(prompt)
             telemetry.log(
-                "info", "rlm_prompt_init",
+                "info",
+                "rlm_prompt_init",
                 task_id=task.task_id,
                 data_len=context_len,
                 has_search_tools=has_search_tools,
@@ -574,9 +594,18 @@ class RLMEngine:
             "result = llm_query('Search for recent news about AI agents and summarize')\n"
             "print(result)\n"
             "```\n\n"
-            "IMPORTANT: When you are done, call FINAL with your final output.\n"
-            "Example: FINAL(\"my final answer\")\n\n"
-            "Think step by step and use the REPL environment to do the necessary work."
+            "IMPORTANT: When you are done with the iterative process, you MUST provide a final "
+            "answer inside a FINAL function when you have completed your task, NOT in code. "
+            "Do not use these tags unless you have completed your task. You have two options:\n"
+            "1. Use FINAL(your final answer here) to provide the answer directly\n"
+            "2. Use FINAL_VAR(variable_name) to return a variable you have created in the REPL "
+            "environment as your final output\n\n"
+            "Note: If you are ready to provide a final answer, you cannot write anything other "
+            "than the final answer in the FINAL or FINAL_VAR tags.\n\n"
+            "Think step by step carefully, plan, and execute this plan immediately in your "
+            "response -- do not just say 'I will do this' or 'I will do that'. Output to the "
+            "REPL environment and recursive LLMs as much as possible. Remember to explicitly "
+            "answer the original query in your final answer."
         )
 
         # Add budget constraints to system prompt so model knows limits upfront
@@ -585,10 +614,15 @@ class RLMEngine:
             budget_snapshot=budget_snapshot,
             critical_threshold=critical_threshold,
         )
-        
+
         tools_guidance = task.metadata.get("tools_guidance") or ""
         criteria_text = _format_success_criteria(task.success_criteria)
-        prompt = self._model_prompt_extra(task.model) + base_prompt + budget_text + criteria_text
+        prompt = (
+            self._model_prompt_extra(task.model)
+            + base_prompt
+            + budget_text
+            + criteria_text
+        )
 
         if self._prompt_style == "extended":
             suppress_probe = bool(task.metadata.get("suppress_probe_guidance"))
@@ -605,7 +639,14 @@ class RLMEngine:
                 strategy = strip_probe(strategy)
                 search_guidance = strip_probe(search_guidance)
             pip_guidance = PIP_INSTALL_GUIDANCE if self._enable_pip else ""
-            prompt = prompt + guardrails + search_guidance + pip_guidance + strategy + tools_guidance
+            prompt = (
+                prompt
+                + guardrails
+                + search_guidance
+                + pip_guidance
+                + strategy
+                + tools_guidance
+            )
         elif tools_guidance:
             prompt = prompt + tools_guidance
 
@@ -618,16 +659,16 @@ class RLMEngine:
         critical_threshold: Optional[int] = None,
     ) -> str:
         """Format budget limits for inclusion in system prompt.
-        
+
         Communicates hard limits upfront so model can plan accordingly.
         These limits are enforced by the system during LLM calls.
-        
+
         Args:
             budget: The Budget model with limits
             budget_snapshot: Optional snapshot from TokenBudgetPool with remaining_tokens
         """
         constraints = []
-        
+
         if budget.max_total_tokens is not None:
             constraints.append(f"max_total_tokens: {budget.max_total_tokens}")
         if budget.max_tokens is not None:
@@ -636,10 +677,10 @@ class RLMEngine:
             constraints.append(f"max_cost_usd: ${budget.max_cost_usd:.4f}")
         if budget.max_seconds is not None:
             constraints.append(f"max_seconds: {budget.max_seconds:.1f}")
-        
+
         if not constraints:
             return ""
-        
+
         # Add remaining tokens from snapshot if available
         remaining_info = ""
         if budget_snapshot and budget_snapshot.get("remaining_tokens") is not None:
@@ -652,7 +693,7 @@ class RLMEngine:
                         "\n*** LOW BUDGET WARNING: You have very limited tokens. "
                         "Work efficiently and call FINAL() as soon as possible. ***"
                     )
-        
+
         critical_text = ""
         if isinstance(critical_threshold, int) and critical_threshold > 0:
             if critical_threshold <= 100:

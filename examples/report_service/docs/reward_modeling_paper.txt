@@ -1,0 +1,38 @@
+Document: Advances in Reward Modeling
+Author: ML Safety Lab
+Date: 2024-02-20
+
+Reward modeling is a technique for learning reward functions from human feedback,
+enabling AI systems to optimize for human preferences rather than hand-coded
+objectives.
+
+Core Approach:
+1. Collect human comparisons of AI outputs
+2. Train a reward model to predict human preferences
+3. Use the reward model to guide policy optimization
+
+This connects directly to AI safety (see ai_safety_overview.txt) because it
+addresses the alignment problem: how do we specify what we actually want?
+
+Key Findings:
+- Reward models can generalize beyond training distribution
+- Ensemble methods reduce reward hacking (gaming the reward model)
+- Constitutional AI (self-critique) complements reward modeling
+
+Limitations:
+- Human feedback is expensive and noisy
+- Reward models can be manipulated by sophisticated policies
+- Evaluation is difficult (see evaluation_frameworks.txt for metrics)
+
+The RLHF pipeline has become standard in large language models:
+1. Pretrain on text
+2. Fine-tune with supervised learning
+3. Align with RLHF using reward models
+
+Future directions include:
+- Scalable oversight for superhuman AI (mentioned in governance_framework.txt)
+- Automated reward model evaluation
+- Multi-objective reward modeling
+
+This work is foundational for the governance discussions in governance_framework.txt,
+as it provides technical mechanisms for implementing safety requirements.

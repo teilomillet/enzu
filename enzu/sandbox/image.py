@@ -16,14 +16,15 @@ Usage:
         .pip("pandas", "numpy")
         .env(TOKENIZERS_PARALLELISM="false")
     )
-    
+
     built = image.build()  # Returns BuiltImage with tag
-    
+
     engine = RLMEngine(
         isolation="container",
         sandbox_image=image,
     )
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -41,108 +42,110 @@ logger = logging.getLogger(__name__)
 class SandboxImage:
     """
     Chainable image builder for Enzu sandboxes.
-    
+
     Each method returns self for chaining. Layers are recorded in order
     and converted to Dockerfile instructions via to_dockerfile().
-    
+
     Layer types:
     - pip: Install Python packages
-    - apt: Install system packages  
+    - apt: Install system packages
     - run: Execute shell commands
     - env: Set environment variables
     - copy: Copy files into image
     - workdir: Set working directory
     """
-    
+
     # Base Docker image (default: python:3.11-slim)
     _base: str = "python:3.11-slim"
-    
+
     # Ordered list of (layer_type, args) tuples
     # Each layer becomes one or more Dockerfile instructions
     _layers: List[Tuple[str, Dict[str, Any]]] = field(default_factory=list)
-    
+
     @classmethod
     def python(cls, version: str = "3.11") -> "SandboxImage":
         """Start with a Python base image."""
         return cls(_base=f"python:{version}-slim")
-    
+
     @classmethod
     def debian(cls, python_version: str = "3.11") -> "SandboxImage":
         """Start with Debian slim + Python."""
         return cls(_base=f"python:{python_version}-slim-bookworm")
-    
+
     @classmethod
     def from_image(cls, image: str) -> "SandboxImage":
         """Start from any Docker image."""
         return cls(_base=image)
-    
+
     def pip(self, *packages: str, index_url: Optional[str] = None) -> "SandboxImage":
         """
         Install Python packages via pip.
-        
+
         Each pip() call becomes a separate layer for better caching.
         Group related packages in one call when they change together.
         """
         self._layers.append(("pip", {"packages": packages, "index_url": index_url}))
         return self
-    
+
     def apt(self, *packages: str) -> "SandboxImage":
         """
         Install system packages via apt-get.
-        
+
         Includes apt-get update and cleanup in a single RUN to minimize layer size.
         """
         self._layers.append(("apt", {"packages": packages}))
         return self
-    
+
     def run(self, *commands: str) -> "SandboxImage":
         """
         Run shell commands during image build.
-        
+
         Each command becomes a separate RUN instruction.
         For commands that should run together, chain with && in a single string.
         """
         self._layers.append(("run", {"commands": commands}))
         return self
-    
+
     def env(self, **variables: str) -> "SandboxImage":
         """
         Set environment variables.
-        
+
         Variables are available during build and at runtime.
         """
         self._layers.append(("env", {"variables": variables}))
         return self
-    
+
     def copy(self, src: str, dst: str) -> "SandboxImage":
         """
         Copy local files into image.
-        
+
         Note: src must be within the build context (tmpdir during build).
         For absolute paths, consider using a multi-stage build or run().
         """
         self._layers.append(("copy", {"src": src, "dst": dst}))
         return self
-    
+
     def workdir(self, path: str) -> "SandboxImage":
         """Set working directory for subsequent commands and runtime."""
         self._layers.append(("workdir", {"path": path}))
         return self
-    
+
     def to_dockerfile(self) -> str:
         """
         Generate Dockerfile from recorded layers.
-        
+
         Produces deterministic output for consistent content hashing.
         """
         lines = [f"FROM {self._base}"]
-        
+
         for layer_type, args in self._layers:
             if layer_type == "pip":
                 pkgs = " ".join(args["packages"])
-                idx = f"--index-url {args['index_url']} " if args.get("index_url") else ""
+                idx = (
+                    f"--index-url {args['index_url']} " if args.get("index_url") else ""
+                )
                 lines.append(f"RUN pip install --no-cache-dir {idx}{pkgs}")
-            
+
             elif layer_type == "apt":
                 pkgs = " ".join(args["packages"])
                 # Single RUN with cleanup to minimize layer size
@@ -151,33 +154,33 @@ class SandboxImage:
                     f"apt-get install -y --no-install-recommends {pkgs} && "
                     f"rm -rf /var/lib/apt/lists/*"
                 )
-            
+
             elif layer_type == "run":
                 for cmd in args["commands"]:
                     lines.append(f"RUN {cmd}")
-            
+
             elif layer_type == "env":
                 for k, v in args["variables"].items():
                     lines.append(f'ENV {k}="{v}"')
-            
+
             elif layer_type == "copy":
                 lines.append(f"COPY {args['src']} {args['dst']}")
-            
+
             elif layer_type == "workdir":
                 lines.append(f"WORKDIR {args['path']}")
-        
+
         return "\n".join(lines)
-    
+
     def content_hash(self) -> str:
         """
         Generate deterministic hash for caching.
-        
+
         Same Dockerfile content -> same hash -> cache hit.
         Uses SHA256 truncated to 12 chars (collision-resistant for tags).
         """
         dockerfile = self.to_dockerfile()
         return hashlib.sha256(dockerfile.encode()).hexdigest()[:12]
-    
+
     def build(
         self,
         tag: Optional[str] = None,
@@ -200,6 +203,7 @@ class SandboxImage:
         """
         # Detect container runtime (Podman preferred)
         from enzu.isolation.runtime import detect_runtime, get_runtime_command
+
         try:
             runtime_cmd = get_runtime_command(detect_runtime())
         except RuntimeError:
@@ -249,15 +253,16 @@ class SandboxImage:
 class BuiltImage:
     """
     A built Docker image ready for use.
-    
+
     Returned by SandboxImage.build(). Can be passed to ContainerConfig
     or create_sandbox() to use the custom image.
     """
+
     # Docker image tag (e.g., "enzu-sandbox:abc123")
     tag: str
-    
+
     # True if image was found in cache (not rebuilt)
     cached: bool
-    
+
     # Dockerfile content used to build (for debugging/auditing)
     dockerfile: str

@@ -30,6 +30,16 @@ python -c "from enzu import ask; print(ask('Say hello in one sentence.'))"
 - **Provider-agnostic**: OpenAI-compatible APIs and bring-your-own model
 - **Production-ready surfaces**: Python SDK, CLI worker, and HTTP API
 
+## What enzu is / isn't
+
+| enzu is | enzu is not |
+|---------|-------------|
+| A budget-first execution engine | A prompt library or template system |
+| Hard stops when limits are hit | Best-effort throttling |
+| RLM for tasks that exceed context | A vector DB or RAG framework |
+| Provider-agnostic (OpenAI-compatible) | Tied to one vendor |
+| Lightweight (~2k LOC core) | A full agent framework |
+
 ## Quickstart (Python)
 
 ```bash
@@ -56,6 +66,125 @@ print(answer)
 ```
 
 Tip: Set `OPENAI_API_KEY`, `OPENROUTER_API_KEY`, or another provider key. You can always pass `model=` and `provider=` explicitly.
+
+## Budget hard-stop (killer feature)
+
+enzu enforces budgets as physics, not policy. When you set a limit, the system **will** stop:
+
+```python
+from enzu import Enzu
+
+client = Enzu()
+
+# Ask for 500 words but cap at 50 tokens - enzu stops deterministically
+result = client.run(
+    "Write a 500-word essay on climate change.",
+    data="...long research document...",
+    tokens=50,  # Hard cap: output stops here
+)
+# Result: "[PARTIAL - budget exhausted]..." - work stopped, no runaway costs
+```
+
+See [examples/budget_hardstop_demo.py](examples/budget_hardstop_demo.py) for the full demo.
+
+## Typed outcomes (predictable handling)
+
+Every run returns a typed `Outcome` for deterministic error handling:
+
+```python
+from enzu import Enzu, Outcome
+
+client = Enzu()
+result = client.run("Analyze this", data=doc, tokens=100, return_report=True)
+
+if result.outcome == Outcome.SUCCESS:
+    print(result.answer)
+elif result.outcome == Outcome.BUDGET_EXCEEDED:
+    print(f"Partial result: {result.answer}" if result.partial else "Budget hit")
+elif result.outcome == Outcome.TIMEOUT:
+    handle_timeout()
+# Also: PROVIDER_ERROR, TOOL_ERROR, VERIFICATION_FAILED, CANCELLED, INVALID_REQUEST
+```
+
+See [examples/typed_outcomes_demo.py](examples/typed_outcomes_demo.py) for the full demo.
+
+## RLM mode (reasoning over long context)
+
+When your input exceeds context limits, enzu automatically switches to RLM (Reasoning Language Model) mode—recursive subcalls that break the problem into manageable pieces:
+
+```python
+from enzu import Enzu
+
+client = Enzu()
+
+# Pass a large document - enzu auto-detects and uses RLM
+answer = client.run(
+    "Who is credited with the first algorithm?",
+    data=open("large_research_paper.txt").read(),  # 100k+ tokens
+    tokens=500,
+)
+```
+
+RLM mode provides progress callbacks, step-by-step reasoning, and budget enforcement across all subcalls.
+
+## Use cases
+
+**1. Cost-controlled batch processing**
+```python
+# Process 1000 documents with a $10 budget cap
+client = Enzu(cost=10.0)
+for doc in documents:
+    result = client.run("Extract key entities", data=doc)
+```
+
+**2. Research assistant with guardrails**
+```python
+# Research task with time and token limits
+answer = client.run(
+    "Research recent AI safety papers and summarize",
+    seconds=60,   # Max 1 minute
+    tokens=1000,  # Max 1000 output tokens
+)
+```
+
+**3. Long document analysis**
+```python
+# Analyze a document too large for context window
+summary = client.run(
+    "Summarize the main arguments and conclusions",
+    data=open("100_page_report.pdf.txt").read(),
+    tokens=500,
+)
+```
+
+## Job mode (async delegation)
+
+For long-running tasks, use job mode to submit and poll:
+
+```python
+from enzu import Enzu, JobStatus
+import time
+
+client = Enzu()
+
+# Submit a job (returns immediately)
+job = client.submit("Analyze this large dataset", data=data, cost=5.0)
+print(f"Job ID: {job.job_id}")
+
+# Poll for completion
+while job.status in (JobStatus.PENDING, JobStatus.RUNNING):
+    time.sleep(1)
+    job = client.status(job.job_id)
+
+# Get result
+if job.status == JobStatus.COMPLETED:
+    print(job.answer)
+
+# Or cancel if needed
+# client.cancel(job.job_id)
+```
+
+See [examples/job_delegation_demo.py](examples/job_delegation_demo.py) for the full demo.
 
 ## HTTP API (server)
 
@@ -98,14 +227,17 @@ JSON
 
 ## Examples
 
+- `examples/budget_hardstop_demo.py` - **Killer demo**: budget cap stops work deterministically
+- `examples/typed_outcomes_demo.py` - Typed outcomes for predictable error handling
+- `examples/job_delegation_demo.py` - Async job mode with polling
 - `examples/python_quickstart.py` - Minimal Python usage
 - `examples/python_budget_guardrails.py` - Hard budget limits
 - `examples/budget_cap_total_tokens.py` - Tiny total-token cap (hard stop)
 - `examples/budget_cap_seconds.py` - Tiny time cap (hard stop)
 - `examples/budget_cap_cost_openrouter.py` - Tiny cost cap (OpenRouter only)
-- `examples/http_quickstart.sh` - HTTP API run
-- `examples/chat_with_budget.py` - TaskSpec + budgets + success criteria
 - `examples/rlm_with_context.py` - RLM run over longer context
+- `examples/chat_with_budget.py` - TaskSpec + budgets + success criteria
+- `examples/http_quickstart.sh` - HTTP API run
 - `examples/research_with_exa.py` - Research tool + synthesis
 - `examples/file_chatbot.py` - File-based chat loop
 - `examples/file_researcher.py` - Session-based research loop

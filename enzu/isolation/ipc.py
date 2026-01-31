@@ -16,6 +16,7 @@ Message Types:
 
 No seccomp changes needed since read/write syscalls are already allowed.
 """
+
 from __future__ import annotations
 
 import json
@@ -58,7 +59,9 @@ def encode_message(msg_type: str, payload: Dict[str, Any]) -> bytes:
     json_bytes = json.dumps(message).encode("utf-8")
 
     if len(json_bytes) > MAX_MESSAGE_SIZE:
-        raise ValueError(f"Message size {len(json_bytes)} exceeds limit {MAX_MESSAGE_SIZE}")
+        raise ValueError(
+            f"Message size {len(json_bytes)} exceeds limit {MAX_MESSAGE_SIZE}"
+        )
 
     length_prefix = struct.pack(">I", len(json_bytes))
     return length_prefix + json_bytes
@@ -77,7 +80,9 @@ def decode_message(data: bytes) -> Dict[str, Any]:
     return json.loads(data.decode("utf-8"))
 
 
-def read_message(stream: BinaryIO, timeout: Optional[float] = None) -> Optional[Dict[str, Any]]:
+def read_message(
+    stream: BinaryIO, timeout: Optional[float] = None
+) -> Optional[Dict[str, Any]]:
     """
     Read a length-prefixed message from a binary stream.
 
@@ -203,7 +208,9 @@ class IPCBridge:
             # Wait for data with timeout
             # Use select for cross-platform timeout support
             try:
-                readable, _, _ = select.select([self._stdout], [], [], min(remaining, 1.0))
+                readable, _, _ = select.select(
+                    [self._stdout], [], [], min(remaining, 1.0)
+                )
             except (ValueError, OSError):
                 # Stream closed
                 if self._result is not None:
@@ -255,16 +262,24 @@ class IPCBridge:
                 result = ""
                 logger.warning("llm_query called but no callback provided")
 
-            write_message(self._stdin, MSG_LLM_RESPONSE, {
-                "success": True,
-                "result": result,
-            })
+            write_message(
+                self._stdin,
+                MSG_LLM_RESPONSE,
+                {
+                    "success": True,
+                    "result": result,
+                },
+            )
         except Exception as e:
             logger.error("llm_query callback failed: %s", e)
-            write_message(self._stdin, MSG_LLM_RESPONSE, {
-                "success": False,
-                "error": str(e),
-            })
+            write_message(
+                self._stdin,
+                MSG_LLM_RESPONSE,
+                {
+                    "success": False,
+                    "error": str(e),
+                },
+            )
 
     def _handle_llm_batch(self, payload: Dict[str, Any]) -> None:
         """Handle LLM_BATCH request from worker."""
@@ -277,16 +292,24 @@ class IPCBridge:
                 results = [""] * len(prompts)
                 logger.warning("llm_batch called but no callback provided")
 
-            write_message(self._stdin, MSG_LLM_RESPONSE, {
-                "success": True,
-                "results": results,
-            })
+            write_message(
+                self._stdin,
+                MSG_LLM_RESPONSE,
+                {
+                    "success": True,
+                    "results": results,
+                },
+            )
         except Exception as e:
             logger.error("llm_batch callback failed: %s", e)
-            write_message(self._stdin, MSG_LLM_RESPONSE, {
-                "success": False,
-                "error": str(e),
-            })
+            write_message(
+                self._stdin,
+                MSG_LLM_RESPONSE,
+                {
+                    "success": False,
+                    "error": str(e),
+                },
+            )
 
 
 # Worker-side IPC functions (embedded in worker scripts)

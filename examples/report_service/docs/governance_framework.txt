@@ -1,0 +1,51 @@
+Document: AI Governance Framework
+Author: Policy Research Institute
+Date: 2024-04-05
+
+Effective governance ensures AI development proceeds safely and benefits humanity.
+This framework addresses institutional, technical, and international coordination.
+
+Connection to Technical Work:
+Governance builds on the technical foundations in ai_safety_overview.txt,
+reward_modeling_paper.txt, and evaluation_frameworks.txt. Policy without
+technical grounding is ineffective; technology without governance is dangerous.
+
+Key Governance Mechanisms:
+
+1. Pre-deployment Testing
+   - Required safety evaluations (see evaluation_frameworks.txt)
+   - Third-party audits
+   - Staged rollouts
+
+2. Compute Governance
+   - Tracking large training runs
+   - Know-your-customer for cloud providers
+   - International coordination on compute thresholds
+
+3. Information Sharing
+   - Incident reporting between labs
+   - Shared safety benchmarks
+   - Coordinated disclosure of vulnerabilities
+
+4. Liability and Accountability
+   - Clear responsibility chains
+   - Insurance requirements
+   - Regulatory oversight
+
+International Coordination:
+- AI safety is a global challenge requiring global solutions
+- Race dynamics between nations increase risk
+- Need for treaties analogous to nuclear non-proliferation
+
+Failure Modes Prevented:
+- Unilateral deployment of dangerous systems
+- Race to the bottom on safety standards
+- Lack of accountability for harms
+
+Implementation:
+Labs should adopt the technical practices in ai_safety_overview.txt,
+use the evaluation methods in evaluation_frameworks.txt, and participate
+in governance structures outlined here.
+
+Budget constraints (like those enabled by enzu) support governance by
+ensuring predictable, auditable AI operations.

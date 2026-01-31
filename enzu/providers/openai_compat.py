@@ -5,6 +5,7 @@ from typing import Any, Callable, Dict, Optional
 from openai import OpenAI
 
 from enzu.models import ProgressEvent, ProviderResult, TaskSpec
+
 # Shared helpers: _get_field, _as_list are used for response parsing.
 # Defined in usage.py to avoid duplication across modules.
 from enzu.usage import _as_list, _get_field, build_task_input_text
@@ -15,7 +16,7 @@ from enzu.retry import with_retry
 class OpenAICompatProvider(BaseProvider):
     """
     Unified provider for all OpenAI-compatible APIs.
-    
+
     Supports both Open Responses API (per openresponses.org spec) and
     Chat Completions API. Tries Responses API first if supported, falls
     back to Chat Completions for compatibility.
@@ -49,7 +50,7 @@ class OpenAICompatProvider(BaseProvider):
     def generate(self, task: TaskSpec) -> ProviderResult:
         """
         Generate response using Open Responses API if supported, else Chat Completions.
-        
+
         Per openresponses.org spec, Responses API uses 'input' parameter and
         returns 'output_text' field. Chat Completions uses 'messages' and
         returns 'choices[0].message.content'.
@@ -73,8 +74,12 @@ class OpenAICompatProvider(BaseProvider):
     def _requires_responses(self, task: TaskSpec) -> bool:
         return bool(task.responses)
 
-    def _build_responses_params(self, task: TaskSpec, *, stream: bool) -> Dict[str, Any]:
-        params: Dict[str, Any] = dict(task.responses) if isinstance(task.responses, dict) else {}
+    def _build_responses_params(
+        self, task: TaskSpec, *, stream: bool
+    ) -> Dict[str, Any]:
+        params: Dict[str, Any] = (
+            dict(task.responses) if isinstance(task.responses, dict) else {}
+        )
         if stream:
             params["stream"] = True
         else:
@@ -90,7 +95,9 @@ class OpenAICompatProvider(BaseProvider):
 
         extra_body = self._extra_body()
         if extra_body:
-            params["extra_body"] = self._merge_extra_body(params.get("extra_body"), extra_body)
+            params["extra_body"] = self._merge_extra_body(
+                params.get("extra_body"), extra_body
+            )
         return self._clean_params(params)
 
     @staticmethod
@@ -152,7 +159,7 @@ class OpenAICompatProvider(BaseProvider):
     ) -> ProviderResult:
         """
         Stream response using Open Responses API if supported, else Chat Completions.
-        
+
         Open Responses uses semantic events like 'response.output_text.delta'.
         Chat Completions uses 'choices[0].delta.content'.
         """
@@ -168,7 +175,9 @@ class OpenAICompatProvider(BaseProvider):
         return self._stream_chat_completions(task, on_progress)
 
     @with_retry()
-    def _stream_responses(self, task: TaskSpec, on_progress: Optional[Callable[[ProgressEvent], None]]) -> ProviderResult:
+    def _stream_responses(
+        self, task: TaskSpec, on_progress: Optional[Callable[[ProgressEvent], None]]
+    ) -> ProviderResult:
         """Stream using Open Responses API (openresponses.org spec)."""
         output_chunks: list[str] = []
         refusal_chunks: list[str] = []
@@ -187,7 +196,9 @@ class OpenAICompatProvider(BaseProvider):
                 payload = self._event_payload(event)
                 event_type = _get_field(payload, "type")
                 if event_type in {"response.failed", "response.error"}:
-                    error = _get_field(payload, "error") or _get_field(payload, "message")
+                    error = _get_field(payload, "error") or _get_field(
+                        payload, "message"
+                    )
                     raise RuntimeError(f"Responses stream failed: {error}")
                 if event_type == "response.output_text.delta":
                     delta = _get_field(payload, "delta", "")
@@ -246,11 +257,16 @@ class OpenAICompatProvider(BaseProvider):
                             if isinstance(text, str) and text:
                                 output_index = self._get_int(payload, "output_index")
                                 content_index = self._get_int(payload, "content_index")
-                                if output_index is not None and content_index is not None:
+                                if (
+                                    output_index is not None
+                                    and content_index is not None
+                                ):
                                     if part_type == "output_text":
                                         done_parts[(output_index, content_index)] = text
                                     else:
-                                        refusal_parts[(output_index, content_index)] = text
+                                        refusal_parts[(output_index, content_index)] = (
+                                            text
+                                        )
                                 else:
                                     if part_type == "output_text":
                                         done_parts_fallback.append(text)
@@ -280,14 +296,20 @@ class OpenAICompatProvider(BaseProvider):
             done_parts_text = "".join(done_parts[key] for key in sorted(done_parts))
             if done_parts_fallback:
                 done_parts_text += "".join(done_parts_fallback)
-            refusal_parts_text = "".join(refusal_parts[key] for key in sorted(refusal_parts))
+            refusal_parts_text = "".join(
+                refusal_parts[key] for key in sorted(refusal_parts)
+            )
             if refusal_parts_fallback:
                 refusal_parts_text += "".join(refusal_parts_fallback)
             refusal_text = "".join(refusal_chunks)
-            fallback_text = done_items_text or done_parts_text or refusal_parts_text or refusal_text
+            fallback_text = (
+                done_items_text or done_parts_text or refusal_parts_text or refusal_text
+            )
             if not fallback_text and completed_response is not None:
                 fallback_text = self._extract_responses_output_text(completed_response)
-            if fallback_text and (not output_text or len(fallback_text) > len(output_text)):
+            if fallback_text and (
+                not output_text or len(fallback_text) > len(output_text)
+            ):
                 output_text = fallback_text
             if (
                 not output_text
@@ -303,7 +325,9 @@ class OpenAICompatProvider(BaseProvider):
                 return self._generate_responses(task)
             return ProviderResult(
                 output_text=output_text,
-                raw=completed_response if completed_response is not None else {"streamed": True},
+                raw=completed_response
+                if completed_response is not None
+                else {"streamed": True},
                 usage=usage,
                 provider=self.name,
                 model=task.model,
@@ -381,7 +405,7 @@ class OpenAICompatProvider(BaseProvider):
     def _build_input(self, task: TaskSpec) -> Any:
         """
         Build input string for Open Responses API.
-        
+
         Per openresponses.org spec, Responses API uses 'input' parameter
         (string or structured). Includes success criteria if present.
         """
@@ -394,7 +418,7 @@ class OpenAICompatProvider(BaseProvider):
     def _build_messages(self, task: TaskSpec) -> list[Dict[str, str]]:
         """
         Build messages array for Chat Completions API.
-        
+
         Includes success criteria in the user message if present.
         """
         content = build_task_input_text(task)
@@ -404,7 +428,7 @@ class OpenAICompatProvider(BaseProvider):
     def _extract_responses_output_text(response: Any) -> str:
         """
         Extract text from Open Responses API response.
-        
+
         Per openresponses.org spec, Responses API returns 'output_text' field
         directly, or nested in 'output' items.
         """
@@ -423,9 +447,9 @@ class OpenAICompatProvider(BaseProvider):
     def _extract_chat_output_text(response: Any) -> str:
         """
         Extract text from Chat Completions response.
-        
+
         Response shape: response.choices[0].message.content
-        
+
         Reasoning models (e.g., z-ai/glm-4.7) return output in 'reasoning' field
         with empty 'content'. Falls back to 'reasoning' when 'content' is empty.
         See: https://openrouter.ai/docs/guides/best-practices/reasoning-tokens
@@ -461,9 +485,9 @@ class OpenAICompatProvider(BaseProvider):
     def _extract_chat_delta(chunk: Any) -> str:
         """
         Extract delta text from Chat Completions streaming chunk.
-        
+
         Chunk shape: chunk.choices[0].delta.content
-        
+
         Reasoning models stream thinking in 'reasoning' field. Falls back to
         'reasoning' when 'content' is empty.
         """
@@ -498,7 +522,7 @@ class OpenAICompatProvider(BaseProvider):
     def _extract_usage(response: Any) -> Dict[str, Any]:
         """
         Extract usage stats from response.
-        
+
         Handles both CompletionUsage objects and dicts.
         """
         if isinstance(response, dict):

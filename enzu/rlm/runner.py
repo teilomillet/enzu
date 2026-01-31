@@ -9,6 +9,7 @@ Handles the iterative prompt-execute-feedback cycle with:
 
 Extracted to reduce engine.py complexity and enable testing.
 """
+
 from __future__ import annotations
 
 import re
@@ -17,6 +18,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
 from enzu.models import (
+    Outcome,
     RLMExecutionReport,
     RLMStep,
     TaskSpec,
@@ -60,7 +62,7 @@ def context_grew(
 class StepRunner:
     """
     Runs the RLM step loop: prompt → LLM → code → sandbox → feedback → repeat.
-    
+
     Extracted from RLMEngine.run() for clarity and testability.
     """
 
@@ -103,12 +105,12 @@ class StepRunner:
     ) -> RLMExecutionReport:
         """
         Execute the step loop.
-        
+
         Args:
             prompt: Initial system prompt
             start_ts: Start timestamp for elapsed time calculation
             provider_name: Provider name for report
-        
+
         Returns:
             RLMExecutionReport with success status, answer, steps, and errors
         """
@@ -156,8 +158,10 @@ class StepRunner:
                     # Pre-extract FINAL from code in case execution fails
                     # Handles: truncated output, syntax errors before FINAL line
                     pre_extracted_final = self._extract_final_from_code(code)
-                    self._emit(f"rlm_step:{step_index + 1} executing code ({len(code)} chars)...")
-                    
+                    self._emit(
+                        f"rlm_step:{step_index + 1} executing code ({len(code)} chars)..."
+                    )
+
                     with telemetry.span(
                         "sandbox.exec",
                         step_index=step_index,
@@ -174,7 +178,7 @@ class StepRunner:
                         stdout=_trim_text(stdout),
                         error=_trim_text(error),
                     )
-                    
+
                     # If execution failed and no FINAL captured, use pre-extracted
                     if error and not self._sandbox.answer.get("ready"):
                         if pre_extracted_final and len(pre_extracted_final) >= 10:
@@ -186,7 +190,7 @@ class StepRunner:
                                 step_index=step_index,
                                 content_len=len(pre_extracted_final),
                             )
-                    
+
                     feedback = build_feedback(
                         stdout,
                         error,
@@ -201,7 +205,9 @@ class StepRunner:
                     elif self._detect_truncation(model_output):
                         # Truncated output - try to extract FINAL from incomplete block
                         # Look for code-like content after opening ```
-                        partial_code_match = re.search(r'```(?:python|repl)?\s*\n(.*)', model_output, re.DOTALL)
+                        partial_code_match = re.search(
+                            r"```(?:python|repl)?\s*\n(.*)", model_output, re.DOTALL
+                        )
                         if partial_code_match:
                             partial_code = partial_code_match.group(1)
                             early_final = self._extract_final_from_code(partial_code)
@@ -315,28 +321,28 @@ class StepRunner:
 
     def _detect_truncation(self, model_output: str) -> bool:
         """Detect if LLM output appears truncated.
-        
+
         Truncation indicators:
         - Unclosed code block (odd number of ```)
         - Partial FINAL( without closing paren
-        
+
         Used to trigger early FINAL extraction before sandbox execution fails.
         """
         # Unclosed code block: odd count of ``` fences
-        if '```' in model_output:
-            if model_output.count('```') % 2 != 0:
+        if "```" in model_output:
+            if model_output.count("```") % 2 != 0:
                 return True
         # Partial FINAL( at end without closing paren
-        if re.search(r'FINAL\([^)]*$', model_output):
+        if re.search(r"FINAL\([^)]*$", model_output):
             return True
         return False
 
     def _extract_final_from_code(self, code: str) -> Optional[str]:
         """Extract FINAL() content from code string before execution.
-        
+
         Handles truncated code where FINAL() exists but sandbox can't run it.
         Tries quoted string first (most reliable), then any content in parens.
-        
+
         Returns extracted content or None if no FINAL() found.
         """
         if not code:
@@ -346,23 +352,23 @@ class StepRunner:
         if match:
             return match.group(1)
         # Try any content: FINAL(some_var) or FINAL(expression)
-        match = re.search(r'FINAL\(\s*([^)]+)', code)
+        match = re.search(r"FINAL\(\s*([^)]+)", code)
         if match:
-            content = match.group(1).strip().strip('"\'')
+            content = match.group(1).strip().strip("\"'")
             if content and len(content) >= 5:
                 return content
         return None
 
     def _salvage_answer(self, steps: List[RLMStep]) -> Optional[str]:
         """Recover an answer from truncated execution - never lose work.
-        
+
         Called when no FINAL() was found but budget was exhausted.
         Tries in order of quality:
         1. Partial FINAL( in last model output (truncated mid-call)
         2. Known variable names in sandbox (summary, report, result, answer)
         3. Last non-empty stdout that looks like a result
         4. Last model output (raw, but better than nothing)
-        
+
         Returns extracted answer - always returns something if steps exist.
         """
         if not steps:
@@ -375,7 +381,9 @@ class StepRunner:
         if partial_match:
             content = partial_match.group(1).strip()
             if len(content) >= 20:
-                telemetry.log("info", "rlm_salvage_partial_final", content_len=len(content))
+                telemetry.log(
+                    "info", "rlm_salvage_partial_final", content_len=len(content)
+                )
                 return content
 
         # 2. Check sandbox for common variable names that hold results
@@ -383,24 +391,46 @@ class StepRunner:
         for var_name in salvage_vars:
             value = self._sandbox.get_global(var_name)
             if value and isinstance(value, str) and len(value) >= 20:
-                telemetry.log("info", "rlm_salvage_variable", var_name=var_name, content_len=len(value))
+                telemetry.log(
+                    "info",
+                    "rlm_salvage_variable",
+                    var_name=var_name,
+                    content_len=len(value),
+                )
                 return value
 
         # 3. Use last meaningful stdout as fallback
+        # But skip stdout that looks like raw context/data dumps
         for step in reversed(steps):
             stdout = step.stdout
             if stdout and len(stdout) >= 50 and not stdout.startswith("Word count:"):
-                if not any(x in stdout.lower() for x in ["error", "traceback", "exception"]):
+                # Skip if it looks like raw context dump (starts with list repr or has ===)
+                if stdout.startswith("[") or "===" in stdout[:200]:
+                    continue
+                if not any(
+                    x in stdout.lower() for x in ["error", "traceback", "exception"]
+                ):
                     telemetry.log("info", "rlm_salvage_stdout", content_len=len(stdout))
                     return stdout
 
         # 4. Last resort: return raw model output (never lose the generation)
         # Strip code blocks to get the text content
-        text = re.sub(r'```[\s\S]*?```', '', last_output).strip()
-        if len(text) >= 10:
+        text = re.sub(r"```[\s\S]*?```", "", last_output).strip()
+
+        # If the text looks like a structured report (has headers/sections),
+        # return it directly without the partial marker - it's likely complete
+        has_headers = bool(re.search(r"^##?\s+\w", text, re.MULTILINE))
+        has_sections = text.count("\n\n") >= 2 and len(text) >= 200
+
+        if has_headers or has_sections:
+            telemetry.log(
+                "info", "rlm_salvage_structured_output", content_len=len(text)
+            )
+            return text
+        elif len(text) >= 10:
             telemetry.log("info", "rlm_salvage_raw_output", content_len=len(text))
             return f"[PARTIAL - budget exhausted before FINAL()]\n{text}"
-        
+
         # Absolute fallback: return something
         telemetry.log("warning", "rlm_salvage_minimal", content_len=len(last_output))
         return f"[INCOMPLETE - budget exhausted]\n{last_output[:500]}"
@@ -414,7 +444,7 @@ class StepRunner:
         budget_notice: Optional[str] = None,
     ) -> str:
         """Build next prompt with feedback and budget status.
-        
+
         Budget warnings escalate: 50% -> 80% -> 90%+ critical.
         At 90%+, model gets explicit instruction to call FINAL() immediately.
         """
@@ -472,7 +502,7 @@ class StepRunner:
             system_prompt_tokens=self._system_prompt_tokens,
         )
         answer = self._sandbox.answer.get("content")
-        
+
         # Salvage attempt: if no answer but steps exist, try to recover work
         # Triggers on: budget exhaustion, truncation, max_steps reached, errors
         # Key principle: never lose generation work
@@ -489,7 +519,7 @@ class StepRunner:
                     budget_exceeded="budget_exceeded" in errors,
                     limits_exceeded=bool(budget_usage.limits_exceeded),
                 )
-        
+
         verification = verify_output(
             self._task.success_criteria,
             answer or "",
@@ -519,11 +549,11 @@ class StepRunner:
             # Remove budget_exceeded error since we recovered
             errors = [e for e in errors if e != "budget_exceeded"]
             success = not errors and not budget_usage.limits_exceeded
-            
+
         if not answer:
             errors.append("no_answer")
             telemetry.log("info", "rlm_no_answer")
-        
+
         # Add explicit error message when budget was too low for task complexity
         if "budget_exceeded" in errors or budget_usage.limits_exceeded:
             # Calculate how much budget was used vs available
@@ -532,14 +562,14 @@ class StepRunner:
             used_output = budget_usage.output_tokens or 0
             max_total = budget.max_total_tokens
             max_output = budget.max_tokens
-            
+
             # Determine which limit was hit
             limit_details = []
             if max_total and used_total >= max_total:
                 limit_details.append(f"total_tokens: used {used_total}/{max_total}")
             if max_output and used_output >= max_output:
                 limit_details.append(f"output_tokens: used {used_output}/{max_output}")
-            
+
             # Check if task completed very few steps (indicates budget too low)
             if len(steps) <= 2 and not success:
                 budget_error = (
@@ -563,6 +593,7 @@ class StepRunner:
         if self._context_path:
             try:
                 from enzu.tools.context import ctx_save, ctx_stats
+
                 after = ctx_stats()
                 if context_grew(self._context_before, after):
                     Path(self._context_path).parent.mkdir(parents=True, exist_ok=True)
@@ -576,16 +607,44 @@ class StepRunner:
             except Exception:
                 pass
 
+        # Partial if answer was salvaged (budget exhausted before FINAL)
+        partial = salvaged and bool(answer)
+
+        # Determine typed outcome
+        # Key invariant: if we had to salvage because we ran out of budget before FINAL(),
+        # treat it as budget exhaustion (even if mechanical verification passed).
+        if partial:
+            outcome = Outcome.BUDGET_EXCEEDED
+            success = False
+        elif success:
+            outcome = Outcome.SUCCESS
+        elif "budget_exceeded" in errors or bool(budget_usage.limits_exceeded):
+            outcome = Outcome.BUDGET_EXCEEDED
+        elif "timeout" in " ".join(errors).lower():
+            outcome = Outcome.TIMEOUT
+        elif "no_answer" in errors:
+            outcome = Outcome.VERIFICATION_FAILED
+        elif any("provider" in e.lower() for e in errors):
+            outcome = Outcome.PROVIDER_ERROR
+        elif any("tool" in e.lower() or "sandbox" in e.lower() for e in errors):
+            outcome = Outcome.TOOL_ERROR
+        else:
+            outcome = Outcome.PROVIDER_ERROR
+
         telemetry.log(
             "info",
             "rlm_run_complete",
             success=success,
+            outcome=outcome.value,
+            partial=partial,
             errors=errors,
             budget_used=budget_usage.limits_exceeded,
             answer=_trim_text(answer),
         )
         return RLMExecutionReport(
             success=success,
+            outcome=outcome,
+            partial=partial,
             task_id=self._task.task_id,
             provider=provider_name,
             model=self._task.model,

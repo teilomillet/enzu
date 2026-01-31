@@ -348,30 +348,35 @@ try:
                     if message.startswith("step:") or "Step " in message:
                         # Extract step number if present
                         import re
+
                         match = re.search(r"[Ss]tep\s*:?\s*(\d+)", message)
                         if match:
                             current_step = int(match.group(1))
-                        queue.put_nowait({
-                            "event": "step",
-                            "data": {"step": current_step, "status": message}
-                        })
+                        queue.put_nowait(
+                            {
+                                "event": "step",
+                                "data": {"step": current_step, "status": message},
+                            }
+                        )
                     elif "subcall" in message.lower() or "llm_query" in message.lower():
                         # Subcall events
                         depth = 1
                         import re
+
                         depth_match = re.search(r"depth[=:]\s*(\d+)", message)
                         if depth_match:
                             depth = int(depth_match.group(1))
-                        queue.put_nowait({
-                            "event": "subcall",
-                            "data": {"depth": depth, "phase": message}
-                        })
+                        queue.put_nowait(
+                            {
+                                "event": "subcall",
+                                "data": {"depth": depth, "phase": message},
+                            }
+                        )
                     else:
                         # General progress
-                        queue.put_nowait({
-                            "event": "progress",
-                            "data": {"message": message}
-                        })
+                        queue.put_nowait(
+                            {"event": "progress", "data": {"message": message}}
+                        )
                 except Exception:
                     pass  # Don't let callback errors break execution
 
@@ -394,16 +399,10 @@ try:
                         ),
                     )
                     success = True
-                    await queue.put({
-                        "event": "complete",
-                        "data": result.model_dump()
-                    })
+                    await queue.put({"event": "complete", "data": result.model_dump()})
                 except Exception as e:
                     logger.exception("Error in streaming execution")
-                    await queue.put({
-                        "event": "error",
-                        "data": {"error": str(e)}
-                    })
+                    await queue.put({"event": "error", "data": {"error": str(e)}})
                 finally:
                     state.release(success)
 
@@ -440,15 +439,13 @@ try:
                 "Cache-Control": "no-cache",
                 "Connection": "keep-alive",
                 "X-Accel-Buffering": "no",  # Disable nginx buffering
-            }
+            },
         )
 
     async def handle_health(request: Request) -> JSONResponse:
         state = get_worker_state()
         healthy = state.active < state.max_concurrent
-        return JSONResponse(
-            {"healthy": healthy}, status_code=200 if healthy else 503
-        )
+        return JSONResponse({"healthy": healthy}, status_code=200 if healthy else 503)
 
     async def handle_stats(request: Request) -> JSONResponse:
         # Stats require authentication

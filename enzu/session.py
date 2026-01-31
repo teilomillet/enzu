@@ -10,6 +10,7 @@ Usage:
     session.run("Fix it")  # Model has context from previous exchange
     session.save("session.json")
 """
+
 from __future__ import annotations
 
 import json
@@ -58,6 +59,7 @@ class SessionBudgetExceeded(Exception):
 @dataclass
 class Exchange:
     """Single conversation turn: user prompt + assistant response."""
+
     user: str
     assistant: str
     data_snippet: Optional[str] = None  # First 500 chars of data, for context
@@ -258,12 +260,14 @@ class Session:
 
         # Append exchange to history
         data_snippet = data[:500] if data else None
-        self.exchanges.append(Exchange(
-            user=task,
-            assistant=answer,
-            data_snippet=data_snippet,
-            cost_usd=run_cost,
-        ))
+        self.exchanges.append(
+            Exchange(
+                user=task,
+                assistant=answer,
+                data_snippet=data_snippet,
+                cost_usd=run_cost,
+            )
+        )
 
         if return_report:
             return report
@@ -276,7 +280,9 @@ class Session:
     def raise_cost_cap(self, new_cap: float) -> None:
         """Raise the cost budget cap. Must be higher than current cap."""
         if self.max_cost_usd is not None and new_cap <= self.max_cost_usd:
-            raise ValueError(f"New cap ${new_cap:.2f} must be higher than current ${self.max_cost_usd:.2f}")
+            raise ValueError(
+                f"New cap ${new_cap:.2f} must be higher than current ${self.max_cost_usd:.2f}"
+            )
         self.max_cost_usd = new_cap
 
     def raise_cap(self, new_cap: float) -> None:
@@ -286,7 +292,9 @@ class Session:
     def raise_token_cap(self, new_cap: int) -> None:
         """Raise the token budget cap. Must be higher than current cap."""
         if self.max_tokens is not None and new_cap <= self.max_tokens:
-            raise ValueError(f"New cap {new_cap:,} must be higher than current {self.max_tokens:,}")
+            raise ValueError(
+                f"New cap {new_cap:,} must be higher than current {self.max_tokens:,}"
+            )
         self.max_tokens = new_cap
 
     @property

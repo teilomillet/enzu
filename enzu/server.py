@@ -10,6 +10,7 @@ Or with default settings:
 This module re-exports the app from enzu.server package for
 convenient uvicorn access.
 """
+
 from enzu.server import app, create_app
 
 __all__ = ["app", "create_app"]

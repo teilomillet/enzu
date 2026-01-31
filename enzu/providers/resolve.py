@@ -57,6 +57,7 @@ def resolve_provider(
 
     if use_pool:
         from enzu.providers.pool import get_provider
+
         return get_provider(
             name,
             api_key=api_key,
