@@ -43,12 +43,25 @@ from enzu.rlm import RLMEngine  # noqa: F401
 from enzu.engine import Engine  # noqa: F401
 
 # =============================================================================
+# Job API - Async delegation mode
+# =============================================================================
+from enzu.jobs import (  # noqa: F401
+    submit_job as submit,
+    get_job_status as status,
+    cancel_job as cancel,
+    list_jobs,
+    cleanup_old_jobs,
+)
+
+# =============================================================================
 # Essential data types - Commonly used in run() parameters
 # =============================================================================
 from enzu.models import (  # noqa: F401
     Budget,
     Check,
     ExecutionReport,
+    Job,
+    JobStatus,
     Limits,
     Outcome,
     RLMExecutionReport,
@@ -223,6 +236,12 @@ __all__ = [
     "stream",
     "session",
     "analyze",
+    # Job API (async delegation)
+    "submit",
+    "status",
+    "cancel",
+    "Job",
+    "JobStatus",
     # Factory function
     "new",
     # Legacy class (backward compatibility)
@@ -230,6 +249,8 @@ __all__ = [
     # Session
     "Session",
     "SessionBudgetExceeded",
+    # Typed outcome
+    "Outcome",
     # Typed exceptions
     "EnzuError",
     "EnzuConfigError",

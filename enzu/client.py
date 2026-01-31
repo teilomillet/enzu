@@ -39,7 +39,12 @@ from typing import (
     TYPE_CHECKING,
 )
 
-from enzu.models import ExecutionReport, RLMExecutionReport, ProgressEvent
+from enzu.models import (
+    ExecutionReport,
+    RLMExecutionReport,
+    ProgressEvent,
+    Job,
+)
 from enzu.session import Session
 
 if TYPE_CHECKING:
@@ -467,6 +472,92 @@ class Enzu:
             List of answers in the same order as tasks.
         """
         return [self.run(task, data=data) for task in tasks]  # type: ignore
+
+    # =========================================================================
+    # Job API - Async delegation mode
+    # =========================================================================
+
+    def submit(
+        self,
+        task: str,
+        *,
+        data: Optional[str] = None,
+        cost: Optional[float] = None,
+        tokens: Optional[int] = None,
+        seconds: Optional[float] = None,
+    ) -> Job:
+        """
+        Submit a task for async execution (delegation mode).
+
+        Returns immediately with a job_id. Use status() to check progress
+        or cancel() to stop the job.
+
+        Args:
+            task: The task/prompt to execute.
+            data: Context data.
+            cost: Max cost in USD.
+            tokens: Max output tokens.
+            seconds: Max execution time.
+
+        Returns:
+            Job object with job_id and status.
+
+        Example:
+            job = client.submit("Analyze this large dataset", data=data, cost=5.0)
+            while job.status in (JobStatus.PENDING, JobStatus.RUNNING):
+                time.sleep(1)
+                job = client.status(job.job_id)
+            print(job.answer)
+        """
+        from enzu.jobs import submit_job
+
+        return submit_job(
+            task=task,
+            data=data,
+            model=self.model,
+            provider=self.provider,
+            api_key=self.api_key,
+            cost=cost if cost is not None else self._cost,
+            tokens=tokens if tokens is not None else self._tokens,
+            seconds=seconds if seconds is not None else self._seconds,
+        )
+
+    def status(self, job_id: str) -> Job:
+        """
+        Get the status of a submitted job.
+
+        Args:
+            job_id: The job identifier from submit().
+
+        Returns:
+            Job object with current status, outcome, and result if complete.
+
+        Example:
+            job = client.status("job-abc123")
+            if job.status == JobStatus.COMPLETED:
+                print(job.answer)
+        """
+        from enzu.jobs import get_job_status
+
+        return get_job_status(job_id)
+
+    def cancel(self, job_id: str) -> Job:
+        """
+        Cancel a running job.
+
+        Args:
+            job_id: The job identifier from submit().
+
+        Returns:
+            Job object with updated status.
+
+        Example:
+            job = client.cancel("job-abc123")
+            assert job.status == JobStatus.CANCELLED
+        """
+        from enzu.jobs import cancel_job
+
+        return cancel_job(job_id)
 
 
 # =============================================================================

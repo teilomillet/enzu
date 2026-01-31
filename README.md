@@ -144,6 +144,35 @@ summary = client.run(
 )
 ```
 
+## Job mode (async delegation)
+
+For long-running tasks, use job mode to submit and poll:
+
+```python
+from enzu import Enzu, JobStatus
+import time
+
+client = Enzu()
+
+# Submit a job (returns immediately)
+job = client.submit("Analyze this large dataset", data=data, cost=5.0)
+print(f"Job ID: {job.job_id}")
+
+# Poll for completion
+while job.status in (JobStatus.PENDING, JobStatus.RUNNING):
+    time.sleep(1)
+    job = client.status(job.job_id)
+
+# Get result
+if job.status == JobStatus.COMPLETED:
+    print(job.answer)
+
+# Or cancel if needed
+# client.cancel(job.job_id)
+```
+
+See [examples/job_delegation_demo.py](examples/job_delegation_demo.py) for the full demo.
+
 ## HTTP API (server)
 
 ```bash
@@ -187,6 +216,7 @@ JSON
 
 - `examples/budget_hardstop_demo.py` - **Killer demo**: budget cap stops work deterministically
 - `examples/typed_outcomes_demo.py` - Typed outcomes for predictable error handling
+- `examples/job_delegation_demo.py` - Async job mode with polling
 - `examples/python_quickstart.py` - Minimal Python usage
 - `examples/python_budget_guardrails.py` - Hard budget limits
 - `examples/rlm_with_context.py` - RLM run over longer context

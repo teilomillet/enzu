@@ -25,6 +25,16 @@ class Outcome(str, Enum):
     VERIFICATION_FAILED = "verification_failed"
 
 
+class JobStatus(str, Enum):
+    """Job execution status for async/delegation mode."""
+
+    PENDING = "pending"
+    RUNNING = "running"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+
+
 def utc_now() -> datetime:
     return datetime.now(timezone.utc)
 
@@ -300,3 +310,42 @@ class ExecutionReport(BaseModel):
     progress_events: List[ProgressEvent] = Field(default_factory=list)
     trajectory: List[TrajectoryStep] = Field(default_factory=list)
     errors: List[str] = Field(default_factory=list)
+
+
+class Job(BaseModel):
+    """
+    Async job status for delegation mode.
+
+    Jobs are long-running tasks that execute in the background.
+    Use submit() to create a job, status() to check progress, cancel() to stop.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    job_id: str = Field(..., description="Unique job identifier")
+    status: JobStatus = Field(default=JobStatus.PENDING)
+    outcome: Optional[Outcome] = Field(
+        default=None, description="Final outcome (only set when completed)"
+    )
+    partial: bool = Field(default=False)
+
+    created_at: float = Field(..., description="Unix timestamp when job was created")
+    started_at: Optional[float] = Field(
+        default=None, description="Unix timestamp when execution started"
+    )
+    completed_at: Optional[float] = Field(
+        default=None, description="Unix timestamp when job finished"
+    )
+
+    answer: Optional[str] = Field(default=None, description="Result (if completed)")
+    error: Optional[str] = Field(default=None, description="Error message (if failed)")
+
+    usage: Optional[BudgetUsage] = Field(
+        default=None, description="Token/cost accounting"
+    )
+    event_count: int = Field(default=0, description="Number of progress events")
+
+    stream_url: Optional[str] = Field(
+        default=None, description="URL to stream progress events"
+    )
+    poll_url: Optional[str] = Field(default=None, description="URL to poll for status")
