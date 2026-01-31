@@ -100,7 +100,7 @@ JSON
 
 - `examples/python_quickstart.py` - Minimal Python usage
 - `examples/python_budget_guardrails.py` - Hard budget limits
-- `examples/budget_cap_tokens.py` - Tiny token cap (hard stop)
+- `examples/budget_cap_total_tokens.py` - Tiny total-token cap (hard stop)
 - `examples/budget_cap_seconds.py` - Tiny time cap (hard stop)
 - `examples/budget_cap_cost_openrouter.py` - Tiny cost cap (OpenRouter only)
 - `examples/http_quickstart.sh` - HTTP API run

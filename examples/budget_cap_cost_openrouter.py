@@ -6,17 +6,27 @@ Run:
 """
 
 import os
+import sys
+from pathlib import Path
+
+from dotenv import load_dotenv
+
+# Allows running from a git checkout without installing enzu.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+ROOT = Path(__file__).resolve().parents[1]
+load_dotenv(ROOT / ".env")
 
 from enzu import Enzu
 
 if not os.getenv("OPENROUTER_API_KEY"):
-    raise SystemExit("Set OPENROUTER_API_KEY")
+    raise SystemExit("Set OPENROUTER_API_KEY (e.g. in .env)")
 
-client = Enzu(provider="openrouter", model=os.getenv("OPENROUTER_MODEL") or "openai/gpt-4o")
+client = Enzu(provider="openrouter", model="z-ai/glm-4.7")
 
 report = client.run(
     "Write a long, multi-section report on the history of navigation.",
-    cost=0.001,  # intentionally tiny
+    mode="chat",
+    cost=0.000001,  # intentionally absurd: should always exceed
     return_report=True,
 )
 
