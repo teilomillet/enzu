@@ -10,6 +10,19 @@ Budgeted LLM tasks that scale beyond context.
 
 enzu is a Python-first toolkit for AI engineers and builders who need reliable, budgeted LLM runs. It enforces hard limits (tokens, time, cost), switches to RLM when context is large, and works across OpenAI-compatible providers. Use it from Python, the CLI, or the HTTP API.
 
+## 30-second quickstart
+
+```bash
+uv add enzu
+export OPENAI_API_KEY=sk-...
+python -c "from enzu import ask; print(ask('Say hello in one sentence.'))"
+```
+
+## What enzu is (and isn’t)
+
+- **Enzu is** a *budget + reliability layer* for LLM work: caps that actually stop execution when you hit token/time/cost limits.
+- **Enzu isn’t** a giant agent framework. It’s meant to stay small, composable, and easy to drop into existing code.
+
 ## Why enzu
 
 - **Hard budgets by default**: tokens, time, and cost caps that actually stop work
@@ -219,6 +232,9 @@ JSON
 - `examples/job_delegation_demo.py` - Async job mode with polling
 - `examples/python_quickstart.py` - Minimal Python usage
 - `examples/python_budget_guardrails.py` - Hard budget limits
+- `examples/budget_cap_total_tokens.py` - Tiny total-token cap (hard stop)
+- `examples/budget_cap_seconds.py` - Tiny time cap (hard stop)
+- `examples/budget_cap_cost_openrouter.py` - Tiny cost cap (OpenRouter only)
 - `examples/rlm_with_context.py` - RLM run over longer context
 - `examples/chat_with_budget.py` - TaskSpec + budgets + success criteria
 - `examples/http_quickstart.sh` - HTTP API run
