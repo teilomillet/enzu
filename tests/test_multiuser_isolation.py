@@ -478,16 +478,18 @@ class TestStateLeakageDetection:
         This tests that each Session instance is independent and doesn't
         share state with other instances.
         """
-        session_ids: Set[int] = set()
+        sessions: List[Session] = []
 
         # Create multiple sessions and verify they are unique instances
         for i in range(20):
             provider = MockProvider(main_outputs=['```python\nFINAL("ok")\n```'])
             session = Session(model="mock", provider=provider)
-            session_ids.add(id(session))
+            sessions.append(session)
             session.run("test", cost=1.0)
 
         # Each call should create a unique session instance
+        # Keep references to prevent GC from reusing memory addresses
+        session_ids = {id(s) for s in sessions}
         assert len(session_ids) == 20, "Sessions should be unique instances"
 
     def test_exchange_history_not_shared(self):
