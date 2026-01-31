@@ -15,7 +15,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 ROOT = Path(__file__).resolve().parents[1]
 load_dotenv(ROOT / ".env")
 
-from enzu import Budget, Engine, OpenAICompatProvider, SuccessCriteria, TaskSpec
+from enzu import Budget, Engine, OpenAICompatProvider, SuccessCriteria, TaskSpec  # noqa: E402
 
 api_key = os.getenv("OPENROUTER_API_KEY")
 if not api_key:

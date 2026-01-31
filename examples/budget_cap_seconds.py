@@ -17,7 +17,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 ROOT = Path(__file__).resolve().parents[1]
 load_dotenv(ROOT / ".env")
 
-from enzu import Enzu
+from enzu import Enzu  # noqa: E402
 
 if not os.getenv("OPENROUTER_API_KEY"):
     raise SystemExit("Set OPENROUTER_API_KEY (e.g. in .env)")
