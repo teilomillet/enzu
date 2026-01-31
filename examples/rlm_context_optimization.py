@@ -117,13 +117,19 @@ def run_inline_context() -> RLMExecutionReport:
 
     report = engine.run(task, provider, data=None)
 
-    # Manually track context breakdown for inline mode
-    breakdown = ContextBreakdown(
-        task_prompt_chars=len(query),
-        inline_data_chars=len(LARGE_CONTEXT),
-        used_symbolic_context=False,
-    )
-    report.context_breakdown = breakdown.to_dict()
+    # Note: context_breakdown is now automatically populated by RLM engine!
+    # For inline mode, we can enhance it with inline data metrics
+    if report.context_breakdown:
+        report.context_breakdown["inline_data_chars"] = len(LARGE_CONTEXT)
+        report.context_breakdown["used_symbolic_context"] = False
+    else:
+        # Fallback if metrics aren't available
+        breakdown = ContextBreakdown(
+            task_prompt_chars=len(query),
+            inline_data_chars=len(LARGE_CONTEXT),
+            used_symbolic_context=False,
+        )
+        report.context_breakdown = breakdown.to_dict()
 
     return report
 
@@ -157,19 +163,8 @@ def run_symbolic_context(tmpdir: Path) -> RLMExecutionReport:
     # Pass context as file data (not inline)
     report = engine.run(task, provider, data=LARGE_CONTEXT)
 
-    # Track symbolic context usage
-    breakdown = ContextBreakdown(
-        task_prompt_chars=len(query),
-        file_data_chars=len(LARGE_CONTEXT),
-        used_symbolic_context=True,
-        context_path=str(context_file),
-        # File access metrics would be populated by RLM engine instrumentation
-        # For now, we'll estimate based on whether RLM accessed it
-        file_reads=1 if len(report.steps) > 0 else 0,
-        file_bytes_read=len(LARGE_CONTEXT) // 3,  # Estimate: ~33% accessed
-    )
-    report.context_breakdown = breakdown.to_dict()
-
+    # Note: context_breakdown is now automatically populated by RLM engine!
+    # It tracks file access patterns, steps, and trajectory metrics
     return report
 
 

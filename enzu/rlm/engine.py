@@ -128,6 +128,9 @@ class RLMEngine:
         # sandbox_image: SandboxImage, BuiltImage, or string (see enzu.sandbox.image)
         # Only used when isolation="container"
         self._sandbox_image = sandbox_image
+        # Track subcalls for context metrics
+        self._subcall_count = 0
+        self._subcall_lock = threading.Lock()
 
     @staticmethod
     def _build_context(query: str, data: Any) -> List[Any]:
@@ -180,6 +183,10 @@ class RLMEngine:
     ) -> RLMExecutionReport:
         """Run a depth-limited recursive RLM subcall."""
         import json
+
+        # Track subcall for metrics
+        with self._subcall_lock:
+            self._subcall_count += 1
 
         sub_metadata = {
             k: v
@@ -319,6 +326,11 @@ class RLMEngine:
                 budget_usage=budget_usage,
                 errors=errors,
             )
+
+        # Reset subcall counter for top-level runs
+        if depth == 0:
+            with self._subcall_lock:
+                self._subcall_count = 0
 
         start_ts = time.time()
         usage_accumulator: Dict[str, Any] = {}
@@ -550,6 +562,8 @@ class RLMEngine:
                 context_before=context_before,
                 drain_budget_notices=drain_budget_notices,
                 system_prompt_tokens=system_prompt_tokens,
+                get_subcall_count=lambda: self._subcall_count,
+                depth=depth,
             )
             return runner.run(prompt, start_ts, provider.name)
 

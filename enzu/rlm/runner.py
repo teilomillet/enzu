@@ -82,6 +82,8 @@ class StepRunner:
         context_before: Optional[Dict[str, Any]] = None,
         drain_budget_notices: Optional[Callable[[], Optional[str]]] = None,
         system_prompt_tokens: Optional[int] = None,
+        get_subcall_count: Optional[Callable[[], int]] = None,
+        depth: int = 0,
     ) -> None:
         self._task = task
         self._sandbox = sandbox
@@ -96,6 +98,76 @@ class StepRunner:
         self._context_before = context_before
         self._drain_budget_notices = drain_budget_notices
         self._system_prompt_tokens = system_prompt_tokens
+        self._get_subcall_count = get_subcall_count
+        self._depth = depth
+
+    def _build_context_breakdown(
+        self,
+        steps: List[RLMStep],
+        budget_usage: Any,
+        elapsed_seconds: float,
+        subcall_count: int = 0,
+        depth: int = 0,
+    ) -> Optional[Dict[str, Any]]:
+        """Build context breakdown metrics from run data."""
+        try:
+            from enzu.rlm.context_metrics import ContextBreakdown
+
+            # Extract context information
+            task_prompt_chars = len(self._task.input_text) if self._task.input_text else 0
+
+            # System prompt tokens (if tracked)
+            system_prompt_tokens = self._system_prompt_tokens or 0
+            # Estimate: ~4 chars per token on average
+            system_prompt_chars = system_prompt_tokens * 4
+
+            # File-based context detection
+            has_context_file = self._context_path is not None
+            file_data_chars = 0
+            file_bytes_read = 0
+            file_reads = 0
+
+            # Check if context was accessed
+            if self._context_before is not None:
+                # Context stats were tracked
+                file_reads = self._context_before.get("num_queries", 0)
+                file_bytes_read = self._context_before.get("total_text_chars", 0)
+
+            # Estimate file data size from context path or metadata
+            if has_context_file and self._context_path:
+                try:
+                    from pathlib import Path
+                    context_file = Path(self._context_path)
+                    if context_file.exists():
+                        file_data_chars = len(context_file.read_text())
+                except Exception:
+                    pass
+
+            # Track trajectory metrics
+            total_steps = len(steps)
+            # LLM invocations = steps + subcalls
+            llm_invocations = total_steps + subcall_count
+
+            breakdown = ContextBreakdown(
+                system_prompt_chars=system_prompt_chars,
+                task_prompt_chars=task_prompt_chars,
+                inline_data_chars=0,  # RLM uses file-based context
+                file_data_chars=file_data_chars,
+                file_reads=file_reads,
+                file_bytes_read=file_bytes_read,
+                depth=depth,
+                total_steps=total_steps,
+                subcalls=subcall_count,
+                llm_invocations=llm_invocations,
+                used_symbolic_context=has_context_file,
+                context_path=self._context_path,
+            )
+
+            return breakdown.to_dict()
+
+        except Exception:
+            # Don't fail the run if metrics collection fails
+            return None
 
     def run(
         self,
@@ -641,6 +713,16 @@ class StepRunner:
             budget_used=budget_usage.limits_exceeded,
             answer=_trim_text(answer),
         )
+        # Build context breakdown metrics
+        subcall_count = self._get_subcall_count() if self._get_subcall_count else 0
+        context_breakdown = self._build_context_breakdown(
+            steps=steps,
+            budget_usage=budget_usage,
+            elapsed_seconds=elapsed_seconds,
+            subcall_count=subcall_count,
+            depth=self._depth,
+        )
+
         return RLMExecutionReport(
             success=success,
             outcome=outcome,
@@ -652,4 +734,5 @@ class StepRunner:
             steps=steps,
             budget_usage=budget_usage,
             errors=errors,
+            context_breakdown=context_breakdown,
         )
