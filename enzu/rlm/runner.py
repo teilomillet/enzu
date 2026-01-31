@@ -607,9 +607,16 @@ class StepRunner:
             except Exception:
                 pass
 
+        # Partial if answer was salvaged (budget exhausted before FINAL)
+        partial = salvaged and bool(answer)
+
         # Determine typed outcome
-        # Note: budget_exceeded error may have been removed if answer was salvaged
-        if success:
+        # Key invariant: if we had to salvage because we ran out of budget before FINAL(),
+        # treat it as budget exhaustion (even if mechanical verification passed).
+        if partial:
+            outcome = Outcome.BUDGET_EXCEEDED
+            success = False
+        elif success:
             outcome = Outcome.SUCCESS
         elif "budget_exceeded" in errors or bool(budget_usage.limits_exceeded):
             outcome = Outcome.BUDGET_EXCEEDED
@@ -623,9 +630,6 @@ class StepRunner:
             outcome = Outcome.TOOL_ERROR
         else:
             outcome = Outcome.PROVIDER_ERROR
-
-        # Partial if answer was salvaged (budget exhausted before FINAL)
-        partial = salvaged and bool(answer)
 
         telemetry.log(
             "info",
