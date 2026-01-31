@@ -44,6 +44,20 @@ Features:
 
 Requires: `EXA_API_KEY`
 
+## Batch Processing
+
+### Invoice Processing Pipeline
+[`invoice_processing/`](invoice_processing/) - Document extraction at scale
+
+Process thousands of invoices with strict budget control:
+- Per-item budget allocation ($0.02 max per document)
+- Parallel processing with configurable concurrency
+- Graceful degradation when budget is tight
+- Retry logic with exponential backoff
+- p50/p95 cost metrics
+
+**The core pattern:** Per-Item Budget + Parallelism + Graceful Degradation
+
 ## Report Generation
 
 ### Report Service

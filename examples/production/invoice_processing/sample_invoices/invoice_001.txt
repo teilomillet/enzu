@@ -1,0 +1,32 @@
+INVOICE
+
+Invoice Number: INV-2024-001
+Date: January 15, 2024
+Due Date: February 15, 2024
+
+FROM:
+Acme Corp
+123 Business Lane
+San Francisco, CA 94102
+Tax ID: 12-3456789
+
+BILL TO:
+TechStart Inc
+456 Innovation Drive
+Austin, TX 78701
+
+ITEMS:
+| Description              | Qty | Unit Price | Amount    |
+|--------------------------|-----|------------|-----------|
+| Cloud Hosting (Monthly)  | 1   | $499.00    | $499.00   |
+| API Calls (10k bundle)   | 5   | $29.00     | $145.00   |
+| Premium Support          | 1   | $199.00    | $199.00   |
+
+Subtotal: $843.00
+Tax (8.25%): $69.55
+TOTAL DUE: $912.55
+
+Payment Terms: Net 30
+Payment Methods: Wire Transfer, ACH, Credit Card
+
+Notes: Thank you for your business!

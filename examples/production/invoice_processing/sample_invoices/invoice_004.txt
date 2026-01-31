@@ -1,0 +1,40 @@
+**INVOICE**
+
+Creative Design Studio
+www.creativedesignstudio.io
+hello@creativedesignstudio.io
+
+Invoice To:
+  RetailBrand Co.
+  Attn: Marketing Department
+  8800 Shopping Center Blvd
+  Miami, FL 33101
+
+Invoice #: CDS-4521
+Date: Jan 22, 2024
+Due: Feb 21, 2024
+
+Project: Q1 2024 Marketing Campaign
+
+┌────────────────────────────────────────────────────────┐
+│ Service                              Hours    Amount   │
+├────────────────────────────────────────────────────────┤
+│ Brand Strategy Session               8       $1,600   │
+│ Logo Redesign (3 concepts)           20      $4,000   │
+│ Social Media Templates (10)          15      $2,250   │
+│ Banner Ads (5 sizes x 3 variants)    12      $1,800   │
+│ Brand Guidelines Document            10      $1,500   │
+└────────────────────────────────────────────────────────┘
+
+                                    Subtotal:  $11,150.00
+                                    Discount:   -$500.00
+                                    (Loyalty)
+                                    ──────────────────────
+                                    Net Total: $10,650.00
+                                    FL Tax 7%:    $745.50
+                                    ══════════════════════
+                                    TOTAL:     $11,395.50
+
+Accept Credit Cards | PayPal | Bank Transfer
+
+Thank you for choosing Creative Design Studio!

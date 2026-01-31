@@ -1,0 +1,49 @@
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+         PROFESSIONAL SERVICES INVOICE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+From: Martinez Consulting Group
+      2000 Executive Tower, Floor 15
+      Chicago, IL 60601
+
+To:   HealthTech Solutions
+      500 Medical Center Drive
+      Boston, MA 02115
+
+Invoice: MCG-2024-0156
+Issued:  2024-01-20
+Terms:   Net 45
+
+═══════════════════════════════════════════
+
+SERVICES RENDERED (Jan 1-15, 2024):
+
+Senior Consultant - Strategy
+  40 hours @ $250/hr ................. $10,000.00
+
+Associate Consultant - Analysis
+  60 hours @ $150/hr .................  $9,000.00
+
+Travel Expenses (Boston trip)
+  Flights, hotel, meals ..............    $892.45
+
+Materials & Reports
+  Printed deliverables ...............    $156.00
+
+═══════════════════════════════════════════
+                    Services Total:    $20,048.45
+                    Expenses:             $892.45
+                    ─────────────────────────────
+                    SUBTOTAL:          $20,940.90
+                    Tax (0% - Services):    $0.00
+                    ═════════════════════════════
+                    TOTAL DUE:         $20,940.90
+═══════════════════════════════════════════
+
+Wire Instructions:
+Bank: Chase Commercial
+Account Name: Martinez Consulting Group LLC
+Account: 1122334455
+Routing: 071000013
+
+Questions? Contact: billing@martinezcg.com

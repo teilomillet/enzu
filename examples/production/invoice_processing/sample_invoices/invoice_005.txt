@@ -1,0 +1,44 @@
+MANUFACTURING PARTS INVOICE
+============================
+
+SELLER:                          BUYER:
+Industrial Components Inc.       AutoParts Manufacturing
+PO Box 5500                     1234 Assembly Line Road
+Detroit, MI 48201               Cleveland, OH 44101
+Tel: 313-555-9000               PO Number: APM-2024-0089
+
+INVOICE NUMBER: ICI-78234
+DATE: 01/25/2024
+SHIP DATE: 01/23/2024
+TERMS: Net 60
+
+SHIP TO:
+AutoParts Manufacturing - Warehouse B
+5678 Distribution Way
+Cleveland, OH 44102
+
+ITEM CODE    DESCRIPTION                    QTY    UNIT      TOTAL
+---------------------------------------------------------------------------
+BRG-4420     Ball Bearing Assembly 44mm     500    $4.25     $2,125.00
+SFT-2210     Drive Shaft (Steel)            100    $18.50    $1,850.00
+GSK-1100     Gasket Set (Premium)           200    $6.75     $1,350.00
+BLT-3305     High-Tensile Bolt Kit          150    $12.00    $1,800.00
+LUB-0050     Industrial Lubricant (5L)       25    $45.00    $1,125.00
+---------------------------------------------------------------------------
+                                          MERCHANDISE TOTAL:    $8,250.00
+                                          FREIGHT:                $425.00
+                                          HANDLING:               $125.00
+                                          ---------------------
+                                          SUBTOTAL:            $8,800.00
+                                          TAX EXEMPT (Resale)      $0.00
+                                          =====================
+                                          INVOICE TOTAL:       $8,800.00
+
+Tax Exemption Certificate: OH-RES-445566778
+
+Remit Payment To:
+Industrial Components Inc.
+PO Box 5500
+Detroit, MI 48201
+
+For questions: ar@industrialcomponents.com

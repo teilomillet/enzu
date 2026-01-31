@@ -1,0 +1,37 @@
+INVOICE #2024-0892
+
+Vendor: Global Supplies Ltd
+Address: 789 Commerce St, Seattle, WA 98101
+Phone: (206) 555-1234
+Email: billing@globalsupplies.com
+
+Customer: DataFlow Systems
+         1010 Tech Park Blvd
+         Denver, CO 80202
+
+Invoice Date: January 18, 2024
+Payment Due: February 17, 2024
+
+Line Items:
+  1. Office Supplies Bundle.............$127.50
+     - Paper (10 reams)
+     - Pens (box of 50)
+     - Folders (pack of 100)
+
+  2. Ergonomic Keyboard x3.............$297.00
+
+  3. Monitor Stand x3..................$149.85
+
+  4. Shipping & Handling................$24.99
+
+                          Subtotal: $599.34
+                          Sales Tax: $47.95
+                          ─────────────────
+                          AMOUNT DUE: $647.29
+
+PAYMENT INSTRUCTIONS:
+Bank: First National Bank
+Account: 9876543210
+Routing: 123456789
+
+Past due invoices subject to 1.5% monthly interest.
