@@ -191,6 +191,14 @@ from enzu.isolation import (  # noqa: F401
     configure_metrics_collector,
 )
 
+# Run metrics - p50/p95 cost/run and terminal state distributions
+from enzu.metrics import (  # noqa: F401
+    RunEvent,
+    RunMetricsCollector,
+    get_run_metrics,
+    reset_run_metrics,
+)
+
 # Sandbox image building and lifecycle management
 from enzu.sandbox import (  # noqa: F401
     # Image builder DSL (Phase 1)

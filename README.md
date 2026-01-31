@@ -225,6 +225,7 @@ JSON
 - `docs/PYTHON_API_REFERENCE.md` - Full Python API
 - `docs/COOKBOOK.md` - Patterns and recipes
 - `docs/BUDGETS_AS_PHYSICS.md` - Essay: budgets, containment, typed outcomes for delegated agents
+- `docs/RUN_METRICS.md` - p95 cost/run and terminal state distributions
 
 ## Examples
 
@@ -236,6 +237,7 @@ JSON
 - `examples/budget_cap_total_tokens.py` - Tiny total-token cap (hard stop)
 - `examples/budget_cap_seconds.py` - Tiny time cap (hard stop)
 - `examples/budget_cap_cost_openrouter.py` - Tiny cost cap (OpenRouter only)
+- `examples/run_metrics_demo.py` - p50/p95 cost/run and terminal state distributions
 - `examples/rlm_with_context.py` - RLM run over longer context
 - `examples/chat_with_budget.py` - TaskSpec + budgets + success criteria
 - `examples/http_quickstart.sh` - HTTP API run
