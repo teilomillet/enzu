@@ -1,3 +1,30 @@
+#!/usr/bin/env python3
+"""
+Multi-turn chat with history persistence.
+
+This example demonstrates stateful conversation with:
+- History truncation to fit context windows (8k char limit)
+- State persistence between runs via JSON
+- Simple file-based input/output interface
+
+Run:
+    # Create your input
+    echo "Hello! What can you help me with?" > chat_input.txt
+
+    # Set your API key
+    export OPENAI_API_KEY=sk-...
+
+    # Run the chat
+    python examples/production/file_chatbot.py
+
+    # Check the response
+    cat chat_output.txt
+
+    # Continue the conversation
+    echo "Tell me more about that" > chat_input.txt
+    python examples/production/file_chatbot.py
+"""
+
 import json
 import os
 from pathlib import Path

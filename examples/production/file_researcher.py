@@ -1,3 +1,27 @@
+#!/usr/bin/env python3
+"""
+Session-based research with persistence.
+
+This example demonstrates multi-turn research sessions with:
+- Session save/load for continuity across runs
+- Budget tracking (cost + tokens) across steps
+- Step limits for bounded exploration
+
+Run:
+    # Create a prompt file
+    echo "What are the key challenges in AI safety?" > research_prompt.txt
+
+    # Set your API key
+    export OPENAI_API_KEY=sk-...
+
+    # Run the researcher
+    python examples/production/file_researcher.py
+
+    # Check outputs
+    cat research_output.txt
+    cat research_session.json  # Session state
+"""
+
 import os
 from pathlib import Path
 

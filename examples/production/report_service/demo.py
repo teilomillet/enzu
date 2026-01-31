@@ -2,7 +2,7 @@
 """
 Report Service Demo: Goal + Corpus + Hard Budgets -> Bounded Output
 
-Run: uv run examples/report_service/demo.py
+Run: uv run examples/production/report_service/demo.py
 """
 
 import json

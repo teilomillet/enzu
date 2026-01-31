@@ -1,3 +1,20 @@
+#!/usr/bin/env python3
+"""
+Research task with Exa search integration.
+
+This example demonstrates external tool integration:
+- Uses Exa API for live web search
+- RLM mode for goal-oriented research
+- Budget-controlled output
+
+Run:
+    export OPENAI_API_KEY=sk-...
+    export EXA_API_KEY=...
+    python examples/production/research_with_exa.py
+
+Requires: pip install exa
+"""
+
 import os
 
 from enzu import run

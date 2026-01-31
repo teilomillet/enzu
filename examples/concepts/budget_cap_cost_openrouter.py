@@ -12,8 +12,8 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 # Allows running from a git checkout without installing enzu.
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+ROOT = Path(__file__).resolve().parents[2]
 load_dotenv(ROOT / ".env")
 
 from enzu import Enzu  # noqa: E402
