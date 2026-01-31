@@ -912,3 +912,70 @@ class TestBudgetRobustness:
         assert len(log) == 1000
         # All events should have timestamps
         assert all(e["timestamp"] for e in log)
+
+
+# =============================================================================
+# Adaptive Scaling Telemetry Tests
+# =============================================================================
+
+
+class TestAdaptiveScalingTelemetry:
+    """Test that adaptive scaling emits telemetry events."""
+
+    def test_adaptive_scaling_emits_telemetry_at_50pct(self, capsys) -> None:
+        """Verify telemetry is emitted when 50% threshold is hit."""
+        budget = Budget(max_tokens=1000)
+        tracker = BudgetTracker(budget)
+
+        # Simulate 60% budget usage
+        tracker._output_tokens = 600
+
+        # Trigger adaptive scaling
+        result = tracker.adaptive_max_output_tokens(base_max=500)
+
+        # Should scale to 75% (375 tokens)
+        assert result == 375
+
+        # Check telemetry was emitted
+        captured = capsys.readouterr()
+        assert "budget_adaptive_scaling" in captured.err
+        assert "threshold_pct': 50" in captured.err
+        assert "scale_factor': 0.75" in captured.err
+
+    def test_adaptive_scaling_emits_telemetry_at_80pct(self, capsys) -> None:
+        """Verify telemetry is emitted when 80% threshold is hit."""
+        budget = Budget(max_tokens=1000)
+        tracker = BudgetTracker(budget)
+
+        # Simulate 85% budget usage
+        tracker._output_tokens = 850
+
+        # Trigger adaptive scaling
+        result = tracker.adaptive_max_output_tokens(base_max=500)
+
+        # Should scale to 50% (250 tokens)
+        assert result == 250
+
+        # Check telemetry was emitted
+        captured = capsys.readouterr()
+        assert "budget_adaptive_scaling" in captured.err
+        assert "threshold_pct': 80" in captured.err
+        assert "scale_factor': 0.5" in captured.err
+
+    def test_no_telemetry_below_threshold(self, capsys) -> None:
+        """No telemetry should be emitted below 50% budget."""
+        budget = Budget(max_tokens=1000)
+        tracker = BudgetTracker(budget)
+
+        # Simulate 30% budget usage (below threshold)
+        tracker._output_tokens = 300
+
+        # Trigger adaptive scaling
+        result = tracker.adaptive_max_output_tokens(base_max=500)
+
+        # Should return base_max unchanged
+        assert result == 500
+
+        # No telemetry should be emitted
+        captured = capsys.readouterr()
+        assert "budget_adaptive_scaling" not in captured.err

@@ -231,6 +231,8 @@ class BudgetTracker:
         Scales down output token limit based on remaining budget to prevent
         truncation, then clamps to remaining budget if available.
 
+        Emits telemetry when adaptive scaling triggers.
+
         Args:
             base_max: The default max_output_tokens for the task
             remaining_output_tokens: Optional remaining output token budget
@@ -239,6 +241,8 @@ class BudgetTracker:
         Returns:
             Adjusted max_output_tokens for the next LLM call (never exceeds base_max)
         """
+        from enzu import telemetry
+
         pct = self.percentage_used()
         if not pct:
             max_allowed = base_max
@@ -246,8 +250,26 @@ class BudgetTracker:
             max_pct = max(pct.values())
             if max_pct >= 80:
                 max_allowed = base_max // 2
+                telemetry.log(
+                    "info",
+                    "budget_adaptive_scaling",
+                    threshold_pct=80,
+                    scale_factor=0.5,
+                    base_tokens=base_max,
+                    scaled_tokens=max_allowed,
+                    budget_used_pct=max_pct,
+                )
             elif max_pct >= 50:
                 max_allowed = (base_max * 3) // 4
+                telemetry.log(
+                    "info",
+                    "budget_adaptive_scaling",
+                    threshold_pct=50,
+                    scale_factor=0.75,
+                    base_tokens=base_max,
+                    scaled_tokens=max_allowed,
+                    budget_used_pct=max_pct,
+                )
             else:
                 max_allowed = base_max
 
