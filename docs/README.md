@@ -19,6 +19,9 @@
 - `../examples/research_with_exa.py`
 - `../examples/file_chatbot.py`
 - `../examples/file_researcher.py`
+- `../examples/run_metrics_demo.py`
+- `../examples/retry_tracking_demo.py`
+- `../examples/stress_testing_demo.py`
 
 ## Guides
 
@@ -26,6 +29,8 @@
 - `BACKGROUND_ORCHESTRATION.md` - Worker patterns and pipelines
 - `FILE_BASED_CHATBOT.md` - File-first chatbot flow
 - `FILE_BASED_RESEARCHER.md` - File-first research flow
+- `RUN_METRICS.md` - p95 cost/run and terminal state distributions
+- `STRESS_TESTING.md` - Test p95 behavior under degraded conditions
 
 ## Reference
 
