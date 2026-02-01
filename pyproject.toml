@@ -86,6 +86,7 @@ include = ["enzu", "enzu.*", "scripts"]
 "enzu.spec" = ["*.json"]
 
 [tool.pytest.ini_options]
+pythonpath = ["."]
 markers = [
     "integration: marks tests as integration tests requiring live API access (deselect with '-m \"not integration\"')",
 ]
