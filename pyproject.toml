@@ -68,10 +68,12 @@ server = [
     "fastapi>=0.111.0",
     "uvicorn[standard]>=0.30.0",
 ]
+docling = ["docling>=2.0.0"]
 all = [
     "enzu[dev]",
     "enzu[telemetry]",
     "enzu[server]",
+    "enzu[docling]",
 ]
 
 [project.scripts]
@@ -86,6 +88,7 @@ include = ["enzu", "enzu.*", "scripts"]
 "enzu.spec" = ["*.json"]
 
 [tool.pytest.ini_options]
+testpaths = ["tests"]
 pythonpath = ["."]
 markers = [
     "integration: marks tests as integration tests requiring live API access (deselect with '-m \"not integration\"')",
