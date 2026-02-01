@@ -2,94 +2,75 @@
 
 # enzu
 
-Budgeted LLM tasks that scale beyond context.
+LLM tasks with hard budget limits.
 
 ![PyPI](https://img.shields.io/pypi/v/enzu)
 ![Python](https://img.shields.io/pypi/pyversions/enzu)
 ![License](https://img.shields.io/github/license/teilomillet/enzu)
 
-enzu is a Python-first toolkit for AI engineers and builders who need reliable, budgeted LLM runs. It enforces hard limits (tokens, time, cost), switches to RLM when context is large, and works across OpenAI-compatible providers. Use it from Python, the CLI, or the HTTP API.
+enzu is a Python toolkit for running LLM tasks with **guaranteed spending limits**. Set a token, time, or cost cap—enzu enforces it. No runaway API bills.
 
-## 30-second quickstart
-
-```bash
-uv add enzu
-export OPENAI_API_KEY=sk-...
-python -c "from enzu import ask; print(ask('Say hello in one sentence.'))"
-```
-
-## What enzu is (and isn’t)
-
-- **Enzu is** a *budget + reliability layer* for LLM work: caps that actually stop execution when you hit token/time/cost limits.
-- **Enzu isn’t** a giant agent framework. It’s meant to stay small, composable, and easy to drop into existing code.
-
-## Why enzu
-
-- **Hard budgets by default**: tokens, time, and cost caps that actually stop work
-- **RLM mode for long context**: recursive subcalls when prompts are too large
-- **Provider-agnostic**: OpenAI-compatible APIs and bring-your-own model
-- **Production-ready surfaces**: Python SDK, CLI worker, and HTTP API
-
-## What enzu is / isn't
-
-| enzu is | enzu is not |
-|---------|-------------|
-| A budget-first execution engine | A prompt library or template system |
-| Hard stops when limits are hit | Best-effort throttling |
-| RLM for tasks that exceed context | A vector DB or RAG framework |
-| Provider-agnostic (OpenAI-compatible) | Tied to one vendor |
-| Lightweight (~2k LOC core) | A full agent framework |
-
-## Quickstart (Python)
+## Quickstart
 
 ```bash
-uv add enzu
-# or: pip install enzu
-```
-
-```bash
+pip install enzu
 export OPENAI_API_KEY=sk-...
 ```
 
 ```python
-from enzu import Enzu, ask
+from enzu import ask
 
-print(ask("What is 2+2?"))
-
-client = Enzu()  # Auto-detects from env
-answer = client.run(
-    "Summarize the key points",
-    data="...long document...",
-    tokens=400,
-)
-print(answer)
+print(ask("Explain quantum computing in one sentence."))
 ```
 
-Tip: Set `OPENAI_API_KEY`, `OPENROUTER_API_KEY`, or another provider key. You can always pass `model=` and `provider=` explicitly.
+## The problem enzu solves
 
-## Budget hard-stop (killer feature)
-
-enzu enforces budgets as physics, not policy. When you set a limit, the system **will** stop:
+LLM APIs charge per token. Without limits, a single bad prompt can cost $50+. enzu stops execution **before** you exceed your budget:
 
 ```python
 from enzu import Enzu
 
 client = Enzu()
 
-# Ask for 500 words but cap at 50 tokens - enzu stops deterministically
+# You ask for 500 words, but cap output at 50 tokens
 result = client.run(
     "Write a 500-word essay on climate change.",
-    data="...long research document...",
-    tokens=50,  # Hard cap: output stops here
+    tokens=50,  # Hard limit: stops here, guaranteed
 )
-# Result: "[PARTIAL - budget exhausted]..." - work stopped, no runaway costs
+# Result: partial output, no surprise bill
 ```
 
-See [examples/budget_hardstop_demo.py](examples/budget_hardstop_demo.py) for the full demo.
+## What enzu is / isn't
 
-## Typed outcomes (predictable handling)
+| enzu is | enzu is not |
+|---------|-------------|
+| A budget enforcement layer | A prompt library |
+| Hard stops when limits hit | "Best effort" throttling |
+| Works with any OpenAI-compatible API | Tied to one provider |
+| ~2k lines of code | A heavyweight framework |
 
-Every run returns a typed `Outcome` for deterministic error handling:
+## Core features
+
+### 1. Budget limits
+
+Cap by tokens, seconds, or dollars:
+
+```python
+client = Enzu()
+
+# Cap by tokens
+result = client.run("Summarize this", data=text, tokens=200)
+
+# Cap by time
+result = client.run("Research this topic", seconds=30)
+
+# Cap by cost (requires OpenRouter)
+result = client.run("Analyze this data", cost=0.50)  # Max $0.50
+```
+
+### 2. Predictable error handling
+
+Every call returns a status you can check:
 
 ```python
 from enzu import Enzu, Outcome
@@ -100,156 +81,111 @@ result = client.run("Analyze this", data=doc, tokens=100, return_report=True)
 if result.outcome == Outcome.SUCCESS:
     print(result.answer)
 elif result.outcome == Outcome.BUDGET_EXCEEDED:
-    print(f"Partial result: {result.answer}" if result.partial else "Budget hit")
+    print("Hit the limit, partial result available")
 elif result.outcome == Outcome.TIMEOUT:
-    handle_timeout()
-# Also: PROVIDER_ERROR, TOOL_ERROR, VERIFICATION_FAILED, CANCELLED, INVALID_REQUEST
+    print("Took too long")
 ```
 
-See [examples/typed_outcomes_demo.py](examples/typed_outcomes_demo.py) for the full demo.
+### 3. Document analysis
 
-## RLM mode (reasoning over long context)
+Parse PDFs, Word docs, and other files:
 
-When your input exceeds context limits, enzu automatically switches to RLM (Reasoning Language Model) mode—recursive subcalls that break the problem into manageable pieces:
+```bash
+pip install enzu[docling]
+```
 
 ```python
 from enzu import Enzu
 
 client = Enzu()
 
-# Pass a large document - enzu auto-detects and uses RLM
+# Ask questions about a PDF
+result = client.run(
+    "What are the key findings?",
+    documents=["quarterly-report.pdf"],
+    tokens=500,
+)
+
+# Multi-turn conversation with document context
+session = client.session(documents=["research-paper.pdf"])
+answer1 = session.run("What's the main argument?")
+answer2 = session.run("What evidence supports it?")
+answer3 = session.run("What are the limitations?")
+```
+
+### 4. Long document handling
+
+Documents too large for the model's context window? enzu automatically splits them into chunks and synthesizes the answer:
+
+```python
+client = Enzu()
+
+# Works even with 100k+ token documents
 answer = client.run(
-    "Who is credited with the first algorithm?",
-    data=open("large_research_paper.txt").read(),  # 100k+ tokens
+    "Summarize the main conclusions",
+    data=open("huge-report.txt").read(),
     tokens=500,
 )
 ```
 
-RLM mode provides progress callbacks, step-by-step reasoning, and budget enforcement across all subcalls.
+### 5. Background jobs
 
-## Use cases
-
-**1. Cost-controlled batch processing**
-```python
-# Process 1000 documents with a $10 budget cap
-client = Enzu(cost=10.0)
-for doc in documents:
-    result = client.run("Extract key entities", data=doc)
-```
-
-**2. Research assistant with guardrails**
-```python
-# Research task with time and token limits
-answer = client.run(
-    "Research recent AI safety papers and summarize",
-    seconds=60,   # Max 1 minute
-    tokens=1000,  # Max 1000 output tokens
-)
-```
-
-**3. Long document analysis**
-```python
-# Analyze a document too large for context window
-summary = client.run(
-    "Summarize the main arguments and conclusions",
-    data=open("100_page_report.pdf.txt").read(),
-    tokens=500,
-)
-```
-
-## Job mode (async delegation)
-
-For long-running tasks, use job mode to submit and poll:
+For long-running tasks, fire and poll:
 
 ```python
 from enzu import Enzu, JobStatus
-import time
 
 client = Enzu()
+job = client.submit("Analyze this dataset", data=data, cost=5.0)
 
-# Submit a job (returns immediately)
-job = client.submit("Analyze this large dataset", data=data, cost=5.0)
-print(f"Job ID: {job.job_id}")
-
-# Poll for completion
-while job.status in (JobStatus.PENDING, JobStatus.RUNNING):
-    time.sleep(1)
-    job = client.status(job.job_id)
-
-# Get result
+# Check later
+job = client.status(job.job_id)
 if job.status == JobStatus.COMPLETED:
     print(job.answer)
-
-# Or cancel if needed
-# client.cancel(job.job_id)
 ```
 
-See [examples/job_delegation_demo.py](examples/job_delegation_demo.py) for the full demo.
+## HTTP API
 
-## HTTP API (server)
+Run enzu as a server:
 
 ```bash
-uv pip install "enzu[server]"
-uvicorn enzu.server:app --host 0.0.0.0 --port 8000
+pip install enzu[server]
+uvicorn enzu.server:app --port 8000
 ```
 
 ```bash
 curl http://localhost:8000/v1/run \
   -H "Content-Type: application/json" \
-  -d '{"task":"Say hello","model":"gpt-4o","provider":"openai"}'
+  -d '{"task": "Say hello", "model": "gpt-4o"}'
 ```
-
-If you set `ENZU_API_KEY`, pass `X-API-Key` on every request.
-
-## CLI worker
-
-```bash
-cat <<'JSON' | enzu
-{
-  "provider": "openai",
-  "task": {
-    "task_id": "hello-1",
-    "input_text": "Say hello in one sentence.",
-    "model": "gpt-4o"
-  }
-}
-JSON
-```
-
-## Docs
-
-- `docs/README.md` - Start here
-- `docs/QUICKREF.md` - Providers, env vars, model formats
-- `docs/DEPLOYMENT_QUICKSTART.md` - CLI + integration patterns
-- `docs/SERVER.md` - HTTP API
-- `docs/PYTHON_API_REFERENCE.md` - Full Python API
-- `docs/COOKBOOK.md` - Patterns and recipes
-- `docs/BUDGETS_AS_PHYSICS.md` - Essay: budgets, containment, typed outcomes for delegated agents
-- `docs/RUN_METRICS.md` - p95 cost/run and terminal state distributions
 
 ## Examples
 
-- `examples/budget_hardstop_demo.py` - **Killer demo**: budget cap stops work deterministically
-- `examples/typed_outcomes_demo.py` - Typed outcomes for predictable error handling
-- `examples/job_delegation_demo.py` - Async job mode with polling
-- `examples/python_quickstart.py` - Minimal Python usage
-- `examples/python_budget_guardrails.py` - Hard budget limits
-- `examples/budget_cap_total_tokens.py` - Tiny total-token cap (hard stop)
-- `examples/budget_cap_seconds.py` - Tiny time cap (hard stop)
-- `examples/budget_cap_cost_openrouter.py` - Tiny cost cap (OpenRouter only)
-- `examples/run_metrics_demo.py` - p50/p95 cost/run and terminal state distributions
-- `examples/retry_tracking_demo.py` - Retry tracking and budget attribution
-- `examples/rlm_with_context.py` - RLM run over longer context
-- `examples/chat_with_budget.py` - TaskSpec + budgets + success criteria
-- `examples/http_quickstart.sh` - HTTP API run
-- `examples/research_with_exa.py` - Research tool + synthesis
-- `examples/file_chatbot.py` - File-based chat loop
-- `examples/file_researcher.py` - Session-based research loop
+| Folder | What's inside |
+|--------|---------------|
+| [`examples/basics/`](examples/basics/) | First steps, minimal code |
+| [`examples/concepts/`](examples/concepts/) | Budget caps, error handling |
+| [`examples/production/`](examples/production/) | Document Q&A, async jobs, sessions |
+| [`examples/advanced/`](examples/advanced/) | Metrics, stress testing |
+| [`examples/usecases/`](examples/usecases/) | Code reviewer, summarizer, data extractor |
 
-## Contributing
+Start here:
+- [`basics/python_quickstart.py`](examples/basics/python_quickstart.py) — First call
+- [`concepts/budget_hardstop_demo.py`](examples/concepts/budget_hardstop_demo.py) — See budget enforcement in action
+- [`production/document_qa/pipeline.py`](examples/production/document_qa/pipeline.py) — PDF analysis
 
-See `CONTRIBUTING.md`.
+## Documentation
+
+- [Getting started](docs/README.md)
+- [Provider setup](docs/QUICKREF.md) — OpenAI, OpenRouter, etc.
+- [HTTP API reference](docs/SERVER.md)
+- [Python API reference](docs/PYTHON_API_REFERENCE.md)
+- [Recipes & patterns](docs/COOKBOOK.md)
 
 ## Requirements
 
 Python 3.9+
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md).
