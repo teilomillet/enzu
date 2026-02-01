@@ -32,6 +32,7 @@ def run(
     provider: Optional[Union[str, BaseProvider]] = None,
     fallback_providers: Optional[List[str]] = None,
     data: Optional[str] = None,
+    documents: Optional[List[str]] = None,
     tokens: Optional[int] = None,
     seconds: Optional[float] = None,
     cost: Optional[float] = None,
@@ -167,6 +168,22 @@ def run(
             stacklevel=2,
         )
 
+    # Parse documents if provided and combine with data
+    effective_data = data
+    if documents:
+        from enzu.tools.docling_parser import documents_available, parse_documents
+
+        if not documents_available():
+            raise ImportError(
+                "documents parameter requires Docling. "
+                "Install with: pip install enzu[docling]"
+            )
+        parsed_docs = parse_documents(list(documents))
+        if data:
+            effective_data = f"{parsed_docs}\n\n== Additional Data ==\n{data}"
+        else:
+            effective_data = parsed_docs
+
     # Keep Python mode values aligned with CLI/schema (chat, rlm, auto).
     if mode is not None and mode not in {"chat", "rlm", "auto"}:
         raise ValueError("mode must be 'chat', 'rlm', or 'auto'.")
@@ -180,17 +197,18 @@ def run(
         # Auto-detect mode based on:
         # - Budget signals (cost/seconds) → rlm (goal-oriented work)
         # - Explicit goal → rlm
-        # - Data provided → rlm
+        # - Data or documents provided → rlm
         # - Large context (>64k tokens ≈ 256k chars) → rlm
         # - Otherwise → chat
         task_text = task if isinstance(task, str) else ""
-        data_text = data or ""
+        data_text = effective_data or ""
         total_chars = len(task_text) + len(data_text)
         # 64k tokens ≈ 256k chars (assuming ~4 chars/token)
         AUTO_RLM_CHAR_THRESHOLD = 256_000
 
         wants_goal_oriented = (
-            data is not None
+            effective_data is not None
+            or documents is not None
             or cost is not None
             or seconds is not None
             or goal is not None
@@ -200,7 +218,8 @@ def run(
 
     # RLM without explicit data: prompt contains everything.
     # Default to empty string so sandbox has valid context structure.
-    effective_data = data if data is not None else ""
+    if effective_data is None:
+        effective_data = ""
 
     report = _run_internal(
         task,

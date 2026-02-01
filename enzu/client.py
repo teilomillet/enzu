@@ -246,6 +246,7 @@ class Enzu:
         task: str,
         *,
         data: Optional[str] = None,
+        documents: Optional[List[str]] = None,
         cost: Optional[float] = None,
         tokens: Optional[int] = None,
         seconds: Optional[float] = None,
@@ -268,6 +269,8 @@ class Enzu:
         Args:
             task: The prompt/task to execute.
             data: Context data. Triggers RLM (reasoning) mode.
+            documents: List of document paths (PDF, DOCX) to parse and include.
+                Requires docling: pip install enzu[docling]
             cost: Max cost in USD for this call.
             tokens: Max output tokens for this call.
             seconds: Max seconds for this call.
@@ -295,6 +298,7 @@ class Enzu:
             provider=self.provider,
             api_key=self.api_key,
             data=data,
+            documents=documents,
             cost=cost if cost is not None else self._cost,
             tokens=tokens if tokens is not None else self._tokens,
             seconds=seconds if seconds is not None else self._seconds,
@@ -375,6 +379,7 @@ class Enzu:
     def session(
         self,
         *,
+        documents: Optional[List[str]] = None,
         max_cost_usd: Optional[float] = None,
         max_tokens: Optional[int] = None,
         history_max_chars: int = 10000,
@@ -386,6 +391,8 @@ class Enzu:
         multi-turn conversations.
 
         Args:
+            documents: List of document paths (PDF, DOCX) to parse once and
+                include in all session queries. Requires: pip install enzu[docling]
             max_cost_usd: Session-wide cost cap.
             max_tokens: Session-wide output token cap (cumulative).
             history_max_chars: Max chars of history to retain.
@@ -394,16 +401,16 @@ class Enzu:
             Session configured with this client's model/provider.
 
         Example:
-            chat = client.session(max_cost_usd=5.00)
-            chat.run("Find the bug", data=logs)
-            chat.run("Explain what you found")
-            chat.run("Now fix it")
-            chat.save("debug_session.json")
+            chat = client.session(documents=["paper.pdf"], max_cost_usd=5.00)
+            chat.run("Summarize the methodology")
+            chat.run("What are the key findings?")
+            chat.save("research_session.json")
         """
         return Session(
             model=self.model,
             provider=self.provider,
             api_key=self.api_key,
+            documents=documents,
             max_cost_usd=max_cost_usd,
             max_tokens=max_tokens,
             history_max_chars=history_max_chars,

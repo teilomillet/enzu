@@ -239,6 +239,17 @@ def __getattr__(name: str):
 
         return getattr(_exa_module, name)
 
+    # Docling document parsing tools - only load when accessed
+    _DOCLING_TOOLS = {
+        "parse_document",
+        "parse_documents",
+        "documents_available",
+    }
+    if name in _DOCLING_TOOLS:
+        from enzu.tools import docling_parser as _docling_module
+
+        return getattr(_docling_module, name)
+
     raise AttributeError(f"module 'enzu' has no attribute {name!r}")
 
 

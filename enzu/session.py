@@ -138,6 +138,11 @@ class Session:
         session.run("Find the bug", data=logs, cost=5.00)
         session.run("Fix it")  # Has context from previous
         session.save("debug_session.json")
+
+    Example with documents:
+        session = Session(model="gpt-4", documents=["paper.pdf"])
+        session.run("Summarize the methodology")  # Documents parsed once
+        session.run("What are the results?")  # Reuses cached documents
     """
 
     def __init__(
@@ -146,6 +151,7 @@ class Session:
         *,
         provider: Optional[Union[str, "BaseProvider"]] = None,
         api_key: Optional[str] = None,
+        documents: Optional[List[str]] = None,
         history_max_chars: int = 10000,
         max_cost_usd: Optional[float] = None,
         max_tokens: Optional[int] = None,
@@ -161,11 +167,25 @@ class Session:
         self.total_tokens: int = 0
         self.created_at: str = datetime.now().isoformat()
 
+        # Parse session-level documents once at creation
+        self._session_documents: Optional[List[str]] = documents
+        self._parsed_documents: Optional[str] = None
+        if documents:
+            from enzu.tools.docling_parser import documents_available, parse_documents
+
+            if not documents_available():
+                raise ImportError(
+                    "documents parameter requires Docling. "
+                    "Install with: pip install enzu[docling]"
+                )
+            self._parsed_documents = parse_documents(list(documents))
+
     def run(
         self,
         task: str,
         *,
         data: Optional[str] = None,
+        documents: Optional[List[str]] = None,
         tokens: Optional[int] = None,
         seconds: Optional[float] = None,
         cost: Optional[float] = None,
@@ -183,6 +203,23 @@ class Session:
 
         History is prepended to data, so the model sees previous exchanges.
         After completion, this exchange is added to history.
+
+        Args:
+            task: The prompt/task to execute.
+            data: Additional context data for this query.
+            documents: Additional document paths (PDF, DOCX) for this query.
+                These are combined with session-level documents.
+            tokens: Max output tokens for this call.
+            seconds: Max seconds for this call.
+            cost: Max cost in USD for this call.
+            contains: Output must contain these substrings.
+            matches: Output must match these regex patterns.
+            min_words: Minimum word count required.
+            goal: Goal for model self-verification.
+            temperature: Temperature for this call.
+            max_steps: Max reasoning steps.
+            on_progress: Callback for progress updates.
+            return_report: Return full report instead of just answer.
 
         Raises:
             SessionBudgetExceeded: If session budget cap (cost or tokens) would be exceeded.
@@ -202,18 +239,42 @@ class Session:
         # Import here to avoid circular dependency
         from enzu.api import run as enzu_run
 
+        # Parse per-query documents if provided
+        query_docs_text: Optional[str] = None
+        if documents:
+            from enzu.tools.docling_parser import documents_available, parse_documents
+
+            if not documents_available():
+                raise ImportError(
+                    "documents parameter requires Docling. "
+                    "Install with: pip install enzu[docling]"
+                )
+            query_docs_text = parse_documents(list(documents))
+
         # Format history as text
         history_text = _format_history(self.exchanges, self.history_max_chars)
 
-        # Combine history with new data
-        # Ensure combined_data is never None (data parameter accepts Optional[str] but we want str)
+        # Combine all context: session docs + per-query docs + history + data
+        # Order: Documents first (most relevant), then history, then current data
+        context_parts = []
+
+        # Session-level documents (parsed once at session creation)
+        if self._parsed_documents:
+            context_parts.append("== Session Documents ==\n" + self._parsed_documents)
+
+        # Per-query documents
+        if query_docs_text:
+            context_parts.append("== Query Documents ==\n" + query_docs_text)
+
+        # Conversation history
         if history_text:
-            if data:
-                combined_data = history_text + "\n== Current Data ==\n" + data
-            else:
-                combined_data = history_text
-        else:
-            combined_data = data or ""
+            context_parts.append(history_text)
+
+        # Current data
+        if data:
+            context_parts.append("== Current Data ==\n" + data)
+
+        combined_data = "\n\n".join(context_parts) if context_parts else ""
 
         # Execute
         report = enzu_run(
@@ -318,7 +379,7 @@ class Session:
 
     def to_dict(self) -> Dict[str, Any]:
         """Serialize session for persistence."""
-        return {
+        result = {
             "model": self.model,
             "provider": self.provider,
             "created_at": self.created_at,
@@ -329,6 +390,10 @@ class Session:
             "history_max_chars": self.history_max_chars,
             "exchanges": [ex.to_dict() for ex in self.exchanges],
         }
+        # Include document paths if present (for session reload)
+        if self._session_documents:
+            result["documents"] = self._session_documents
+        return result
 
     @classmethod
     def from_dict(cls, d: Dict[str, Any], api_key: Optional[str] = None) -> "Session":
@@ -337,6 +402,7 @@ class Session:
             model=d["model"],
             provider=d.get("provider", "openrouter"),
             api_key=api_key,
+            documents=d.get("documents"),
             history_max_chars=d.get("history_max_chars", 10000),
             max_cost_usd=d.get("max_cost_usd"),
             max_tokens=d.get("max_tokens"),
