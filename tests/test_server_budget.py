@@ -19,11 +19,12 @@ if env_path.exists():
 
 MODEL = "z-ai/glm-4.7"
 PROVIDER = "openrouter"
-TIMEOUT = 120.0
+TIMEOUT = 300.0
 
 
 @pytest.mark.integration
 @pytest.mark.anyio
+@pytest.mark.timeout(360)
 async def test_budget_tracking():
     """Test that budget is tracked across requests."""
     os.environ["LOGFIRE_IGNORE_NO_CONFIG"] = "1"
@@ -61,7 +62,7 @@ async def test_budget_tracking():
         resp = await client.post(
             f"/v1/sessions/{session_id}/run",
             json={"task": "Say hello in one word."},
-            timeout=TIMEOUT,
+            timeout=60.0,
         )
         assert resp.status_code == 200, f"Failed: {resp.text}"
         result = resp.json()
@@ -89,7 +90,7 @@ async def test_budget_tracking():
             resp = await client.post(
                 f"/v1/sessions/{session_id}/run",
                 json={"task": f"Count from 1 to {(i + 1) * 10}. Just the numbers."},
-                timeout=TIMEOUT,
+                timeout=60.0,
             )
             if resp.status_code == 200:
                 result = resp.json()
