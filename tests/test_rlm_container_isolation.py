@@ -386,26 +386,26 @@ def test_rlm_container_isolation_5_concurrent():
 @pytest.mark.timeout(300)
 def test_rlm_subprocess_isolation_5_concurrent():
     """
-    Test 5 concurrent RLM instances with subprocess isolation.
+    Test concurrent RLM instances with subprocess isolation.
 
     Verifies:
     - Multiple subprocesses can run simultaneously
     - IPC works correctly under concurrency
     - No cross-contamination between instances
+
+    Uses 3 workers to reduce rate-limit pressure on OpenRouter.
     """
     topics = [
         "machine learning",
         "cloud computing",
         "cybersecurity",
-        "data science",
-        "web development",
     ]
-    markers = [f"MARKER-{i:02d}-{uuid4().hex[:6]}" for i in range(5)]
+    markers = [f"MARKER-{i:02d}-{uuid4().hex[:6]}" for i in range(3)]
 
     from concurrent.futures import ThreadPoolExecutor
 
     start_time = time.time()
-    with ThreadPoolExecutor(max_workers=5) as executor:
+    with ThreadPoolExecutor(max_workers=3) as executor:
         futures = [
             executor.submit(
                 run_single_container_engine,
@@ -414,7 +414,7 @@ def test_rlm_subprocess_isolation_5_concurrent():
                 markers[i],
                 "subprocess",
             )
-            for i in range(5)
+            for i in range(3)
         ]
         results = [f.result() for f in futures]
 
@@ -435,13 +435,13 @@ def test_rlm_subprocess_isolation_5_concurrent():
             if i != j and other_marker in result.answer:
                 isolation_violations += 1
 
-    print("\n✓ 5 Concurrent Subprocess Tests:")
-    print(f"  Successful: {len(successful)}/5")
-    print(f"  Failed: {len(failed)}/5")
+    print("\n✓ 3 Concurrent Subprocess Tests:")
+    print(f"  Successful: {len(successful)}/3")
+    print(f"  Failed: {len(failed)}/3")
     print(f"  Total duration: {total_duration_ms:.0f}ms")
     print(f"  Isolation violations: {isolation_violations}")
 
-    assert len(successful) >= 3, f"Expected at least 3 successes, got {len(successful)}"
+    assert len(successful) >= 2, f"Expected at least 2 successes, got {len(successful)}"
     assert isolation_violations == 0, (
         f"Found {isolation_violations} isolation violations"
     )
