@@ -27,10 +27,15 @@ from enzu.metrics.collector import (
     get_run_metrics,
     reset_run_metrics,
 )
+from enzu.scalability import USLModel, LittlesLawResult, littles_law, littles_law_check
 
 __all__ = [
     "RunEvent",
     "RunMetricsCollector",
     "get_run_metrics",
     "reset_run_metrics",
+    "USLModel",
+    "LittlesLawResult",
+    "littles_law",
+    "littles_law_check",
 ]
