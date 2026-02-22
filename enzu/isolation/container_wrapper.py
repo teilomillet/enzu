@@ -59,15 +59,21 @@ SAFE_BUILTIN_NAMES = [
 # Default allowed imports
 DEFAULT_ALLOWED_IMPORTS = {
     "re", "math", "json", "datetime", "collections",
-    "itertools", "functools", "statistics", "string", "textwrap", "typing"
+    "itertools", "functools", "statistics", "string", "textwrap", "typing",
+    "pydantic_monty"
 }
 
 def build_safe_builtins(allowed_imports):
     """Build restricted builtins dict."""
     safe = {name: getattr(builtins, name) for name in SAFE_BUILTIN_NAMES if hasattr(builtins, name)}
 
-    def restricted_import(name, *args, **kwargs):
+    def _is_import_allowed(name):
         if name in allowed_imports:
+            return True
+        return name.split(".", 1)[0] in allowed_imports
+
+    def restricted_import(name, *args, **kwargs):
+        if _is_import_allowed(name):
             return __import__(name, *args, **kwargs)
         raise ImportError(f"Import blocked: {name}")
 

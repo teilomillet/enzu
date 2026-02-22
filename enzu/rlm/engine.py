@@ -109,6 +109,7 @@ class RLMEngine:
             "collections",
             "itertools",
             "functools",
+            "pydantic_monty",
         ]
         self._enable_pip = enable_pip
         if prompt_style not in {"paper", "extended"}:

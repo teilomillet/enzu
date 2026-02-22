@@ -468,6 +468,37 @@ class TestExecCodeFunctional:
         )
         assert result.stdout.strip() == "2"
 
+    def test_submodule_import_allowed_when_root_allowlisted(self) -> None:
+        namespace = build_namespace(
+            data="test",
+            llm_query=lambda x: x,
+            allowed_imports={"json"},
+        )
+        result, _ = exec_code(
+            code="from json.decoder import JSONDecoder\nprint(JSONDecoder)",
+            namespace=namespace,
+            output_limit=1000,
+            timeout_seconds=None,
+            allowed_imports={"json"},
+        )
+        assert result.error is None
+        assert "JSONDecoder" in result.stdout
+
+    def test_default_profile_allows_pydantic_monty(self) -> None:
+        sandbox = PythonSandbox(
+            data="test",
+            llm_query=lambda x: x,
+        )
+        result = sandbox.exec("""
+import pydantic_monty
+print("ok")
+""")
+        if result.error is not None:
+            assert "no module named" in result.error.lower()
+            assert "import blocked" not in result.error.lower()
+        else:
+            assert "ok" in result.stdout
+
 
 class TestSafeHelperFunctions:
     """Test safe helper functions directly."""

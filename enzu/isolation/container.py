@@ -138,6 +138,7 @@ class ContainerConfig:
             "collections",
             "itertools",
             "functools",
+            "pydantic_monty",
         }
     )
 
@@ -400,8 +401,13 @@ def run_sandbox(code, namespace, allowed_imports, output_limit, ipc_enabled=Fals
     ]
     safe_builtins = {name: getattr(builtins, name) for name in safe_names if hasattr(builtins, name)}
 
-    def restricted_import(name, *args, **kwargs):
+    def _is_import_allowed(name):
         if name in allowed_imports:
+            return True
+        return name.split(".", 1)[0] in allowed_imports
+
+    def restricted_import(name, *args, **kwargs):
+        if _is_import_allowed(name):
             return __import__(name, *args, **kwargs)
         raise ImportError(f"Import blocked: {name}")
 

@@ -138,6 +138,20 @@ class TestSandboxRunner:
         assert result.error is None
         assert result.final_answer is not None and "3.14" in result.final_answer
 
+    def test_allowed_submodule_import_works(self):
+        """Submodules are allowed when root package is allowlisted."""
+        runner = SandboxRunner()
+        config = SandboxConfig(allowed_imports={"json"})
+
+        result = runner.run(
+            code="from json.decoder import JSONDecoder\nFINAL('ok')",
+            namespace={},
+            config=config,
+        )
+
+        assert result.error is None
+        assert result.final_answer == "ok"
+
     def test_dunder_access_blocked(self):
         """Dunder attribute access is blocked."""
         runner = SandboxRunner()
