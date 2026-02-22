@@ -13,6 +13,7 @@ from enzu.engine import Engine
 from enzu.models import TaskSpec
 from enzu.providers.registry import list_providers
 from enzu.rlm import RLMEngine
+from enzu.security import HARNESS_PROFILE
 
 
 def _parse_args() -> argparse.Namespace:
@@ -26,7 +27,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--model", help="Model override.")
     # Keep CLI modes aligned with enzu.schema.RunPayload and --print-schema output.
     parser.add_argument(
-        "--mode", choices=["chat", "rlm", "automode"], help="Execution mode."
+        "--mode", choices=["chat", "rlm", "automode", "harness"], help="Execution mode."
     )
     parser.add_argument("--task", help="Task text (used when stdin is empty).")
     parser.add_argument("--task-id", help="Task id override (used with --task).")
@@ -135,7 +136,7 @@ def _guided_payload() -> Dict[str, Any]:
     if not provider:
         raise ValueError("provider is required.")
 
-    mode = _prompt_choice("Mode [chat]: ", ["chat", "rlm", "automode"], "chat")
+    mode = _prompt_choice("Mode [chat]: ", ["chat", "rlm", "automode", "harness"], "chat")
     model = _prompt_line("Model (required): ")
     if not model:
         raise ValueError("model is required.")
@@ -168,6 +169,17 @@ def _guided_payload() -> Dict[str, Any]:
         if not fs_root:
             raise ValueError("fs_root is required for mode=automode.")
         payload["fs_root"] = fs_root
+    elif mode == "harness":
+        context = _prompt_line("Context (optional, paste text or @/path/to/file): ")
+        if context:
+            if context.startswith("@"):
+                path = context[1:]
+                with open(path, "r", encoding="utf-8") as handle:
+                    payload["context"] = handle.read()
+            else:
+                payload["context"] = context
+        max_steps = _prompt_line("Max steps [50]: ") or "50"
+        payload["max_steps"] = int(max_steps)
 
     return payload
 
@@ -193,8 +205,8 @@ def main() -> int:
         context = _resolve_context(data, args.context_file)
         if mode == "rlm" and context is None:
             raise ValueError("context is required for mode=rlm.")
-        if mode not in {"chat", "rlm", "automode"}:
-            raise ValueError("mode must be 'chat', 'rlm', or 'automode'.")
+        if mode not in {"chat", "rlm", "automode", "harness"}:
+            raise ValueError("mode must be 'chat', 'rlm', 'automode', or 'harness'.")
 
         def on_engine_progress(event) -> None:
             if not args.progress:
@@ -246,6 +258,23 @@ def main() -> int:
                 namespace=fs_helpers,
                 on_progress=on_rlm_progress if args.progress else None,
             )
+        elif mode == "harness":
+            max_steps = args.max_steps or int(data.get("max_steps", 50))
+            rlm_engine = RLMEngine(
+                max_steps=max_steps,
+                enable_pip=True,
+                allowed_imports=list(HARNESS_PROFILE.allowed_imports),
+                output_char_limit=HARNESS_PROFILE.output_char_limit,
+                prompt_style="extended",
+                inject_search_tools=True,
+            )
+            rlm_report = rlm_engine.run(
+                task,
+                provider_instance,
+                data=context or task.input_text,
+                on_progress=on_rlm_progress if args.progress else None,
+            )
+            print(json.dumps(rlm_report.model_dump(mode="json"), ensure_ascii=True))
         elif mode == "rlm":
             rlm_engine = (
                 RLMEngine(max_steps=args.max_steps) if args.max_steps else RLMEngine()
