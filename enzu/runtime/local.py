@@ -23,11 +23,22 @@ class LocalRuntime:
         provider_instance = self._resolve_provider_spec(provider)
         fallback_instances = self._resolve_fallbacks(options.fallback_providers)
 
-        engine = RLMEngine(
+        engine_kwargs: dict = dict(
             max_steps=options.max_steps,
             verify_on_final=options.verify_on_final,
             isolation=options.isolation,
         )
+        if options.enable_pip is not None:
+            engine_kwargs["enable_pip"] = options.enable_pip
+        if options.allowed_imports is not None:
+            engine_kwargs["allowed_imports"] = options.allowed_imports
+        if options.output_char_limit is not None:
+            engine_kwargs["output_char_limit"] = options.output_char_limit
+        if options.prompt_style is not None:
+            engine_kwargs["prompt_style"] = options.prompt_style
+        if options.inject_search_tools is not None:
+            engine_kwargs["inject_search_tools"] = options.inject_search_tools
+        engine = RLMEngine(**engine_kwargs)
         # Runtime boundary: keep the framework API stable while swapping runtimes.
         return engine.run(
             spec,

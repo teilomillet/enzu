@@ -36,7 +36,7 @@ Advanced usage via submodules:
 # =============================================================================
 # Core API - What most users need
 # =============================================================================
-from enzu.client import Enzu, ask, new, stream, session, analyze  # noqa: F401
+from enzu.client import Enzu, ask, new, stream, session, analyze, harness  # noqa: F401
 from enzu.objective import objective, Objective  # noqa: F401
 from enzu.api import resolve_provider, run  # noqa: F401
 from enzu.session import Session, SessionBudgetExceeded  # noqa: F401
@@ -265,6 +265,7 @@ __all__ = [
     "session",
     "analyze",
     "objective",
+    "harness",
     "Objective",
     # Job API (async delegation)
     "submit",

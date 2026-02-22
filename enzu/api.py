@@ -69,6 +69,12 @@ def run(
     sandbox: Optional[SandboxProtocol] = None,
     sandbox_factory: Optional[SandboxFactory] = None,
     runtime: Optional[RLMRuntime] = None,
+    # Harness-mode overrides (passed through to RLMEngine via RuntimeOptions)
+    enable_pip: Optional[bool] = None,
+    allowed_imports: Optional[List[str]] = None,
+    output_char_limit: Optional[int] = None,
+    prompt_style: Optional[str] = None,
+    inject_search_tools: Optional[bool] = None,
 ) -> Union[str, ExecutionReport, RLMExecutionReport]:
     """
     Run a task. Returns the answer.
@@ -252,6 +258,11 @@ def run(
         sandbox=sandbox,
         sandbox_factory=sandbox_factory,
         runtime=runtime,
+        enable_pip=enable_pip,
+        allowed_imports=allowed_imports,
+        output_char_limit=output_char_limit,
+        prompt_style=prompt_style,
+        inject_search_tools=inject_search_tools,
     )
     if return_report:
         return report
@@ -292,6 +303,11 @@ def _run_internal(
     sandbox: Optional[SandboxProtocol] = None,
     sandbox_factory: Optional[SandboxFactory] = None,
     runtime: Optional[RLMRuntime] = None,
+    enable_pip: Optional[bool] = None,
+    allowed_imports: Optional[List[str]] = None,
+    output_char_limit: Optional[int] = None,
+    prompt_style: Optional[str] = None,
+    inject_search_tools: Optional[bool] = None,
 ) -> Union[ExecutionReport, RLMExecutionReport]:
     """Internal: run task and return full report."""
     # RLM mode: data provided. When no explicit success criteria, prompt IS the goal.
@@ -342,6 +358,11 @@ def _run_internal(
             sandbox_factory=sandbox_factory,
             on_progress=on_progress,
             fallback_providers=fallback_specs,
+            enable_pip=enable_pip,
+            allowed_imports=allowed_imports,
+            output_char_limit=output_char_limit,
+            prompt_style=prompt_style,
+            inject_search_tools=inject_search_tools,
         )
         # RLMEngine.run requires data to be str, not Optional[str]
         return runtime_impl.run(

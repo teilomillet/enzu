@@ -33,6 +33,12 @@ class RuntimeOptions:
     sandbox_factory: Optional[SandboxFactory] = None
     on_progress: Optional[Callable[[str], None]] = None
     fallback_providers: List[ProviderSpec] = field(default_factory=list)
+    # Harness-mode fields (all default None so non-harness callers unaffected)
+    enable_pip: Optional[bool] = None
+    allowed_imports: Optional[List[str]] = None
+    output_char_limit: Optional[int] = None
+    prompt_style: Optional[str] = None
+    inject_search_tools: Optional[bool] = None
 
 
 class RLMRuntime(Protocol):

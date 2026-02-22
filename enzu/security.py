@@ -28,7 +28,7 @@ import os
 from dataclasses import dataclass
 from typing import FrozenSet, Literal, Optional
 
-SecurityProfileName = Literal["strict", "dev"]
+SecurityProfileName = Literal["strict", "dev", "harness"]
 
 
 @dataclass(frozen=True)
@@ -85,6 +85,7 @@ _CORE_IMPORTS: FrozenSet[str] = frozenset(
         "string",
         "textwrap",
         "typing",
+        "pydantic_monty",
     ]
 )
 
@@ -105,6 +106,36 @@ _NETWORK_IMPORTS: FrozenSet[str] = frozenset(
     [
         "http",
         "urllib",
+    ]
+)
+
+# Harness-mode imports — system/subprocess tools for autonomous tool use
+_HARNESS_IMPORTS: FrozenSet[str] = frozenset(
+    [
+        "subprocess",
+        "sys",
+        "os",
+        "pathlib",
+        "shutil",
+        "tempfile",
+        "io",
+        "time",
+        "logging",
+        "threading",
+        "pickle",
+        "dataclasses",
+        "contextlib",
+        "importlib",
+        "argparse",
+        "glob",
+        "signal",
+        "socket",
+        "configparser",
+        "gzip",
+        "zipfile",
+        "base64",
+        "pprint",
+        "warnings",
     ]
 )
 
@@ -132,9 +163,21 @@ DEV_PROFILE = SecurityProfile(
     description="Development mode. Allows network for search tools, pip install.",
 )
 
+HARNESS_PROFILE = SecurityProfile(
+    name="harness",
+    allowed_imports=_CORE_IMPORTS | _DATA_IMPORTS | _NETWORK_IMPORTS | _HARNESS_IMPORTS,
+    enable_pip=True,
+    enable_network=True,
+    enable_filesystem=False,
+    timeout_seconds=3600.0,
+    output_char_limit=65536,
+    description="Harness mode. Expanded imports, pip, 1-hour timeout for autonomous tool use.",
+)
+
 _PROFILES = {
     "strict": STRICT_PROFILE,
     "dev": DEV_PROFILE,
+    "harness": HARNESS_PROFILE,
 }
 
 # Environment variable for profile selection
@@ -190,5 +233,6 @@ __all__ = [
     "register_security_profile",
     "STRICT_PROFILE",
     "DEV_PROFILE",
+    "HARNESS_PROFILE",
     "SECURITY_PROFILE_ENV_VAR",
 ]

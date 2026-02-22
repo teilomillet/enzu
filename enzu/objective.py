@@ -119,6 +119,32 @@ def _parse_budget(budget: Optional[Union[Dict[str, Any], Budget]]) -> Budget:
 # Planner prompt
 # ---------------------------------------------------------------------------
 
+_HARNESS_PLANNER_TEMPLATE = """\
+
+== HARNESS MODE ==
+You are an autonomous execution harness. Your goal:
+
+{goal}
+
+{constraints_block}
+== CAPABILITIES ==
+- pip_install("package") is available — install any PyPI package at runtime.
+- Expanded imports: subprocess, os, pathlib, sys, and many more.
+- 1-hour timeout, 50 steps per phase.
+
+== INSTRUCTIONS ==
+1. PLAN: Decompose the goal into numbered sub-tasks. Print the plan.
+2. INSTALL: Use pip_install() to install any missing tools or libraries.
+3. EXECUTE: Work on ONE sub-task per iteration. Measure results quantitatively.
+4. ADAPT: If a sub-task fails, inspect the error, adjust, and retry.
+5. TRACK: Call budget_status() after each sub-task. Print remaining budget.
+6. SYNTHESIZE: When all sub-tasks are done or budget < 20%, \
+call FINAL() with the combined result including metrics.
+
+{history_block}
+{budget_block}
+"""
+
 _PLANNER_TEMPLATE = """\
 
 == OBJECTIVE MODE ==
@@ -149,6 +175,7 @@ def _build_planner_prompt(
     phase_number: int = 1,
     history: str = "",
     budget_status: str = "",
+    harness: bool = False,
 ) -> str:
     """Build the planner prompt injected via metadata.tools_guidance."""
     constraints_block = ""
@@ -167,7 +194,8 @@ def _build_planner_prompt(
     if budget_status:
         budget_block = f"Budget status: {budget_status}\n"
 
-    return _PLANNER_TEMPLATE.format(
+    template = _HARNESS_PLANNER_TEMPLATE if harness else _PLANNER_TEMPLATE
+    return template.format(
         goal=goal,
         constraints_block=constraints_block,
         history_block=history_block,
@@ -205,6 +233,7 @@ class Objective:
     max_steps_per_phase: int = 5
     api_key: Optional[str] = None
     isolation: Optional[str] = None
+    harness: bool = False
 
     # Internal state
     _phases: List[Phase] = field(default_factory=list)
@@ -222,6 +251,9 @@ class Objective:
     def __post_init__(self) -> None:
         # Parse budget once for internal use
         self._parsed_budget = _parse_budget(self.budget)
+        # Harness mode: bump default max_steps_per_phase to 50
+        if self.harness and self.max_steps_per_phase == 5:
+            self.max_steps_per_phase = 50
 
     def step(self) -> str:
         """Run one phase (one RLM loop). Returns phase result."""
@@ -239,6 +271,7 @@ class Objective:
             phase_number=len(self._phases) + 1,
             history=history,
             budget_status=budget_status,
+            harness=self.harness,
         )
 
         # Build remaining budget
@@ -262,6 +295,17 @@ class Objective:
         )
 
         # Run one short RLM phase
+        harness_kwargs: Dict[str, Any] = {}
+        if self.harness:
+            from enzu.security import HARNESS_PROFILE
+
+            harness_kwargs = dict(
+                enable_pip=True,
+                allowed_imports=list(HARNESS_PROFILE.allowed_imports),
+                output_char_limit=HARNESS_PROFILE.output_char_limit,
+                prompt_style="extended",
+                inject_search_tools=True,
+            )
         report = enzu_run(
             task=spec,
             model=model,
@@ -272,6 +316,7 @@ class Objective:
             data=self.context or "",
             return_report=True,
             isolation=self.isolation,
+            **harness_kwargs,
         )
 
         # Record phase
@@ -341,6 +386,7 @@ class Objective:
             "context": self.context,
             "max_steps_per_phase": self.max_steps_per_phase,
             "isolation": self.isolation,
+            "harness": self.harness,
             "phases": [p.to_dict() for p in self._phases],
             "budget_used": self._budget_used,
             "done": self._done,
@@ -363,6 +409,7 @@ class Objective:
             context=data.get("context"),
             max_steps_per_phase=data.get("max_steps_per_phase", 5),
             isolation=data.get("isolation"),
+            harness=data.get("harness", False),
         )
         obj._phases = [Phase.from_dict(p) for p in data.get("phases", [])]
         obj._budget_used = data.get("budget_used", {
@@ -487,6 +534,7 @@ def objective(
     max_steps: int = 25,
     api_key: Optional[str] = None,
     isolation: Optional[str] = None,
+    harness: bool = False,
 ) -> str:
     """One-shot objective. Runs a single long RLM loop.
 
@@ -501,13 +549,17 @@ def objective(
 
     parsed = _parse_budget(budget)
 
+    # Harness mode: bump default max_steps to 50
+    if harness and max_steps == 25:
+        max_steps = 50
+
     # Resolve model
     effective_model = model
     if effective_model is None:
         from enzu.client import _detect_provider_and_model
         _, effective_model = _detect_provider_and_model()
 
-    planner_prompt = _build_planner_prompt(goal, constraints)
+    planner_prompt = _build_planner_prompt(goal, constraints, harness=harness)
 
     spec = TaskSpec(
         task_id=f"obj-{uuid4().hex[:8]}",
@@ -519,6 +571,18 @@ def objective(
         max_output_tokens=min(parsed.max_tokens or 4096, 4096),
     )
 
+    harness_kwargs: Dict[str, Any] = {}
+    if harness:
+        from enzu.security import HARNESS_PROFILE
+
+        harness_kwargs = dict(
+            enable_pip=True,
+            allowed_imports=list(HARNESS_PROFILE.allowed_imports),
+            output_char_limit=HARNESS_PROFILE.output_char_limit,
+            prompt_style="extended",
+            inject_search_tools=True,
+        )
+
     report = enzu_run(
         task=spec,
         model=effective_model,
@@ -529,8 +593,49 @@ def objective(
         data=context or "",
         return_report=True,
         isolation=isolation,
+        **harness_kwargs,
     )
 
     if isinstance(report, RLMExecutionReport):
         return report.answer or ""
     return getattr(report, "output_text", "") or ""
+
+
+# ---------------------------------------------------------------------------
+# harness() convenience function — fire-and-forget with harness preset
+# ---------------------------------------------------------------------------
+
+def harness(
+    goal: str,
+    *,
+    budget: Optional[Union[Dict[str, Any], Budget]] = None,
+    model: Optional[str] = None,
+    provider: Optional[str] = None,
+    constraints: Optional[List[str]] = None,
+    context: Optional[str] = None,
+    max_steps: int = 50,
+    api_key: Optional[str] = None,
+    isolation: Optional[str] = None,
+) -> str:
+    """Run an objective in harness mode (expanded imports, pip, 1-hour timeout).
+
+    Thin wrapper around objective() with harness=True and max_steps=50.
+
+    Example:
+        result = enzu.harness(
+            "Retrain the classifier and report F1",
+            budget={"cost": 10, "hours": 1},
+        )
+    """
+    return objective(
+        goal,
+        budget=budget,
+        model=model,
+        provider=provider,
+        constraints=constraints,
+        context=context,
+        max_steps=max_steps,
+        api_key=api_key,
+        isolation=isolation,
+        harness=True,
+    )
