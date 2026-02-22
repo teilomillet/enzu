@@ -19,6 +19,18 @@ from enzu.scalability import (
 # ============================================================
 
 
+class TestUSLConstruction:
+    """Validation on construction."""
+
+    def test_negative_lambda_raises(self):
+        with pytest.raises(ValueError, match="lambda_ must be positive"):
+            USLModel(lambda_=-50.0, sigma=0.1, kappa=0.01)
+
+    def test_zero_lambda_raises(self):
+        with pytest.raises(ValueError, match="lambda_ must be positive"):
+            USLModel(lambda_=0.0, sigma=0.1, kappa=0.01)
+
+
 class TestUSLThroughput:
     """Core throughput formula: X(N) = λN / (1 + σ(N-1) + κN(N-1))."""
 
@@ -96,6 +108,11 @@ class TestUSLPeak:
         with pytest.raises(ValueError, match="kappa <= 0"):
             model.peak_concurrency()
 
+    def test_peak_concurrency_sigma_ge_1_raises(self):
+        model = USLModel(lambda_=100.0, sigma=1.2, kappa=0.01)
+        with pytest.raises(ValueError, match="sigma >= 1"):
+            model.peak_concurrency()
+
     def test_peak_throughput_matches_formula(self):
         model = USLModel(lambda_=100.0, sigma=0.1, kappa=0.01)
         n_star = model.peak_concurrency()
@@ -171,6 +188,20 @@ class TestUSLFit:
         with pytest.raises(ValueError, match="Throughput must be positive"):
             USLModel.fit([(1, 100), (2, 0), (4, 300)])
 
+    def test_fit_n_zero_raises(self):
+        with pytest.raises(ValueError, match="Concurrency must be >= 1"):
+            USLModel.fit([(0, 50), (1, 100), (2, 180)])
+
+    def test_fit_noisy_data_clamps_negative_coefficients(self):
+        """Noisy data that would produce negative sigma/kappa gets clamped to 0."""
+        import random
+        random.seed(42)
+        true = USLModel(lambda_=100, sigma=0.001, kappa=0.0001)
+        noisy = [(n, true.throughput(n) * random.uniform(0.8, 1.2)) for n in [1, 2, 4, 8, 16, 32]]
+        fitted = USLModel.fit(noisy)
+        assert fitted.sigma >= 0.0
+        assert fitted.kappa >= 0.0
+
     def test_fit_exactly_three_points(self):
         """Minimum viable fit with exactly 3 points."""
         true = USLModel(lambda_=100.0, sigma=0.1, kappa=0.01)
@@ -238,6 +269,18 @@ class TestLittlesLawCheck:
         result = littles_law_check(queue_depth=0.0, throughput=10.0, avg_wait=5.0)
         assert result.within_tolerance is False
         assert result.deviation == float("inf")
+
+    def test_negative_queue_depth_raises(self):
+        with pytest.raises(ValueError, match="queue_depth must be >= 0"):
+            littles_law_check(queue_depth=-10, throughput=5, avg_wait=2)
+
+    def test_negative_throughput_raises(self):
+        with pytest.raises(ValueError, match="throughput must be >= 0"):
+            littles_law_check(queue_depth=10, throughput=-5, avg_wait=2)
+
+    def test_negative_avg_wait_raises(self):
+        with pytest.raises(ValueError, match="avg_wait must be >= 0"):
+            littles_law_check(queue_depth=10, throughput=5, avg_wait=-2)
 
     def test_custom_tolerance(self):
         # deviation ≈ 0.042, tolerance=0.03 → should fail

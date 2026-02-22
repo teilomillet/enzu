@@ -45,6 +45,10 @@ class USLModel:
     sigma: float
     kappa: float
 
+    def __post_init__(self) -> None:
+        if self.lambda_ <= 0:
+            raise ValueError(f"lambda_ must be positive, got {self.lambda_}")
+
     def throughput(self, n: int) -> float:
         """Predicted throughput at concurrency level N."""
         if n <= 0:
@@ -57,6 +61,10 @@ class USLModel:
         if self.kappa <= 0:
             raise ValueError(
                 "peak_concurrency undefined when kappa <= 0 (no retrograde region)"
+            )
+        if self.sigma >= 1.0:
+            raise ValueError(
+                "peak_concurrency undefined when sigma >= 1 (no peak exists)"
             )
         continuous = math.sqrt((1.0 - self.sigma) / self.kappa)
         lo = max(1, int(math.floor(continuous)))
@@ -94,6 +102,8 @@ class USLModel:
         A: List[List[float]] = []
         y: List[float] = []
         for n, x in data:
+            if n < 1:
+                raise ValueError(f"Concurrency must be >= 1, got {n}")
             if x <= 0:
                 raise ValueError(f"Throughput must be positive, got {x} at N={n}")
             A.append([1.0, float(n - 1), float(n * (n - 1))])
@@ -124,8 +134,8 @@ class USLModel:
             raise ValueError("Fitted 1/lambda <= 0; data does not fit USL model")
 
         lambda_ = 1.0 / inv_lambda
-        sigma = b[1] * lambda_
-        kappa = b[2] * lambda_
+        sigma = max(0.0, b[1] * lambda_)
+        kappa = max(0.0, b[2] * lambda_)
 
         return cls(lambda_=lambda_, sigma=sigma, kappa=kappa)
 
@@ -187,6 +197,13 @@ def littles_law_check(
 
     Returns a LittlesLawResult with deviation and whether it's within tolerance.
     """
+    if queue_depth < 0:
+        raise ValueError(f"queue_depth must be >= 0, got {queue_depth}")
+    if throughput < 0:
+        raise ValueError(f"throughput must be >= 0, got {throughput}")
+    if avg_wait < 0:
+        raise ValueError(f"avg_wait must be >= 0, got {avg_wait}")
+
     predicted = littles_law(throughput, avg_wait)
 
     if queue_depth == 0 and predicted == 0:
