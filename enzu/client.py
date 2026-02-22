@@ -459,6 +459,49 @@ class Enzu:
         """
         return self.run(task, data=data, cost=cost, goal=goal)  # type: ignore
 
+    def objective(
+        self,
+        goal: str,
+        *,
+        budget: Optional[Any] = None,
+        context: Optional[str] = None,
+        constraints: Optional[List[str]] = None,
+        max_steps: int = 25,
+        isolation: Optional[str] = None,
+    ) -> str:
+        """
+        Run a goal-oriented objective with budget-constrained RLM execution.
+
+        Decomposes the goal into sub-tasks and executes them iteratively.
+
+        Args:
+            goal: The objective to achieve.
+            budget: Budget dict (cost, hours, tokens) or Budget object.
+            context: Initial background information.
+            constraints: List of constraints for the planner.
+            max_steps: Max RLM steps (default 25).
+            isolation: Sandbox isolation level.
+
+        Example:
+            answer = client.objective(
+                "Compare Python and Rust for CLI tools",
+                budget={"tokens": 50000},
+            )
+        """
+        from enzu.objective import objective as _objective
+
+        return _objective(
+            goal,
+            model=self.model,
+            provider=self.provider,
+            api_key=self.api_key,
+            budget=budget,
+            context=context,
+            constraints=constraints,
+            max_steps=max_steps,
+            isolation=isolation,
+        )
+
     def batch(
         self,
         tasks: List[str],
@@ -712,3 +755,37 @@ def analyze(
     """
     client = Enzu(model, provider=provider, cost=cost)
     return client.analyze(task, data, goal=goal)
+
+
+def objective(
+    goal: str,
+    *,
+    budget: Optional[Any] = None,
+    model: Optional[str] = None,
+    provider: Optional[str] = None,
+    context: Optional[str] = None,
+    constraints: Optional[List[str]] = None,
+    max_steps: int = 25,
+    api_key: Optional[str] = None,
+    isolation: Optional[str] = None,
+) -> str:
+    """
+    Run a goal-oriented objective with RLM-based decomposition.
+
+    Example:
+        import enzu
+        enzu.objective("Compare Python and Rust", budget={"tokens": 50000})
+    """
+    from enzu.objective import objective as _obj
+
+    return _obj(
+        goal,
+        model=model,
+        provider=provider,
+        api_key=api_key,
+        budget=budget,
+        context=context,
+        constraints=constraints,
+        max_steps=max_steps,
+        isolation=isolation,
+    )
