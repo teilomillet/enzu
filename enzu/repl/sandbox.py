@@ -106,7 +106,7 @@ def build_safe_builtins(
     safe = {name: getattr(builtins, name) for name in safe_names}
 
     def restricted_import(name: str, *args: Any, **kwargs: Any) -> types.ModuleType:
-        if dynamic_imports or name in allowed_imports:
+        if dynamic_imports or _is_import_allowed(name, allowed_imports):
             return __import__(name, *args, **kwargs)
         raise ImportError(f"Import blocked: {name}")
 
@@ -158,6 +158,8 @@ def build_namespace(
         Install pip packages dynamically during execution.
         Returns: Status message listing installed packages.
         """
+        import importlib
+        import shutil
         import subprocess
         import sys
 
@@ -166,18 +168,33 @@ def build_namespace(
                 "pip_install is disabled. Set enable_pip=True in RLMEngine."
             )
 
+        # Detect installer: prefer uv (common in uv-managed projects),
+        # fall back to pip.
+        use_uv = shutil.which("uv") is not None
+
         results = []
         for package in packages:
             try:
-                subprocess.check_call(
-                    [sys.executable, "-m", "pip", "install", "-q", package],
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                )
+                if use_uv:
+                    subprocess.check_call(
+                        ["uv", "pip", "install", "-q", package],
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.PIPE,
+                    )
+                else:
+                    subprocess.check_call(
+                        [sys.executable, "-m", "pip", "install", "-q", package],
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.PIPE,
+                    )
                 installed_packages.add(package)
                 results.append(f"✓ {package}")
-            except subprocess.CalledProcessError:
-                results.append(f"✗ {package} (failed)")
+            except subprocess.CalledProcessError as exc:
+                err = exc.stderr.decode() if exc.stderr else ""
+                results.append(f"✗ {package} (failed: {err[:200]})")
+
+        # Refresh import machinery so newly installed packages are findable.
+        importlib.invalidate_caches()
 
         return "Installed:\n" + "\n".join(results)
 
@@ -378,13 +395,17 @@ class PythonSandbox:
 
     def exec(self, code: str) -> SandboxResult:
         """Execute code, updating internal namespace."""
+        # When pip is enabled, skip AST import validation — the runtime
+        # import hook already allows all imports via dynamic_imports=True,
+        # so pip-installed packages (sklearn, torch, etc.) are usable.
+        effective_imports = None if self._enable_pip else self._allowed_imports
         result, self._namespace = exec_code(
             code=code,
             namespace=self._namespace,
             output_limit=self._output_char_limit,
             timeout_seconds=self._timeout_seconds,
             enforce_safety=self._enforce_safety,
-            allowed_imports=self._allowed_imports,
+            allowed_imports=effective_imports,
         )
         return result
 
@@ -446,12 +467,22 @@ class SandboxViolation(RuntimeError):
     """Sandbox policy violation."""
 
 
+def _is_import_allowed(name: str, allowed_imports: Set[str]) -> bool:
+    """Allow exact modules and submodules of allowed root packages."""
+    if name in allowed_imports:
+        return True
+    root = name.split(".", 1)[0]
+    return root in allowed_imports
+
+
 def validate_code_safety(code: str, allowed_imports: Optional[Set[str]] = None) -> None:
     """Reject high-risk Python constructs before execution.
 
     Args:
         code: Python code to validate
-        allowed_imports: Set of module names allowed for import (None = block all)
+        allowed_imports: Set of module names allowed for import.
+            None = skip import validation (used when pip is enabled
+            and any package may be imported).
     """
     try:
         tree = ast.parse(code)
@@ -459,17 +490,22 @@ def validate_code_safety(code: str, allowed_imports: Optional[Set[str]] = None) 
         # Let exec() surface syntax errors to keep feedback consistent.
         return
 
-    allowed = allowed_imports or set()
+    # When allowed_imports is None, skip import and dunder checks entirely.
+    # This is the pip-enabled / dynamic-imports path where the runtime
+    # import hook handles security and installed packages need dunder access.
+    if allowed_imports is None:
+        return
+
     violations: list[str] = []
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
             # Check each imported module name against allowed list
             for alias in node.names:
-                if alias.name not in allowed:
+                if not _is_import_allowed(alias.name, allowed_imports):
                     violations.append(f"import blocked: {alias.name}")
         elif isinstance(node, ast.ImportFrom):
             # Check the module being imported from
-            if node.module and node.module not in allowed:
+            if node.module and not _is_import_allowed(node.module, allowed_imports):
                 violations.append(f"import blocked: {node.module}")
         elif isinstance(node, ast.Attribute) and node.attr.startswith("__"):
             # Block dunder attribute access to prevent sandbox escapes.
