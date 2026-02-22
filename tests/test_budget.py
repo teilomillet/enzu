@@ -945,8 +945,14 @@ class TestBudgetRobustness:
 class TestAdaptiveScalingTelemetry:
     """Test that adaptive scaling emits telemetry events."""
 
-    def test_adaptive_scaling_emits_telemetry_at_50pct(self, capsys) -> None:
+    def test_adaptive_scaling_emits_telemetry_at_50pct(self, monkeypatch) -> None:
         """Verify telemetry is emitted when 50% threshold is hit."""
+        from unittest.mock import MagicMock
+        from enzu import telemetry
+
+        mock_log = MagicMock()
+        monkeypatch.setattr(telemetry, "log", mock_log)
+
         budget = Budget(max_tokens=1000)
         tracker = BudgetTracker(budget)
 
@@ -959,14 +965,21 @@ class TestAdaptiveScalingTelemetry:
         # Should scale to 75% (375 tokens)
         assert result == 375
 
-        # Check telemetry was emitted
-        captured = capsys.readouterr()
-        assert "budget_adaptive_scaling" in captured.err
-        assert "threshold_pct': 50" in captured.err
-        assert "scale_factor': 0.75" in captured.err
+        # Check telemetry was called with correct args
+        mock_log.assert_called_once()
+        call_args = mock_log.call_args
+        assert call_args[0] == ("info", "budget_adaptive_scaling")
+        assert call_args[1]["threshold_pct"] == 50
+        assert call_args[1]["scale_factor"] == 0.75
 
-    def test_adaptive_scaling_emits_telemetry_at_80pct(self, capsys) -> None:
+    def test_adaptive_scaling_emits_telemetry_at_80pct(self, monkeypatch) -> None:
         """Verify telemetry is emitted when 80% threshold is hit."""
+        from unittest.mock import MagicMock
+        from enzu import telemetry
+
+        mock_log = MagicMock()
+        monkeypatch.setattr(telemetry, "log", mock_log)
+
         budget = Budget(max_tokens=1000)
         tracker = BudgetTracker(budget)
 
@@ -979,11 +992,12 @@ class TestAdaptiveScalingTelemetry:
         # Should scale to 50% (250 tokens)
         assert result == 250
 
-        # Check telemetry was emitted
-        captured = capsys.readouterr()
-        assert "budget_adaptive_scaling" in captured.err
-        assert "threshold_pct': 80" in captured.err
-        assert "scale_factor': 0.5" in captured.err
+        # Check telemetry was called with correct args
+        mock_log.assert_called_once()
+        call_args = mock_log.call_args
+        assert call_args[0] == ("info", "budget_adaptive_scaling")
+        assert call_args[1]["threshold_pct"] == 80
+        assert call_args[1]["scale_factor"] == 0.5
 
     def test_no_telemetry_below_threshold(self, capsys) -> None:
         """No telemetry should be emitted below 50% budget."""
