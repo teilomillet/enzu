@@ -26,7 +26,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from typing import List, Tuple
+from typing import Iterable, List, Sequence, Tuple
 
 
 @dataclass
@@ -220,4 +220,119 @@ def littles_law_check(
         avg_wait=avg_wait,
         deviation=deviation,
         within_tolerance=deviation <= tolerance,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Utility helpers (migrated from enzu.isolation.scaling)
+# ---------------------------------------------------------------------------
+
+
+def percentile(values: Sequence[float], p: float) -> float:
+    """Interpolated percentile calculation."""
+    if not values:
+        return 0.0
+    if p <= 0:
+        return float(min(values))
+    if p >= 100:
+        return float(max(values))
+    ordered = sorted(float(v) for v in values)
+    rank = (len(ordered) - 1) * (p / 100.0)
+    low = int(math.floor(rank))
+    high = int(math.ceil(rank))
+    if low == high:
+        return ordered[low]
+    weight = rank - low
+    return ordered[low] * (1.0 - weight) + ordered[high] * weight
+
+
+def relative_error(observed: float, predicted: float) -> float:
+    """Relative error: |obs - pred| / max(|obs|, 1e-12)."""
+    denom = max(abs(observed), 1e-12)
+    return abs(observed - predicted) / denom
+
+
+def average_population(events: Sequence[Tuple[float, int]], total_seconds: float) -> float:
+    """Time-weighted average in-flight count from (timestamp, delta) events."""
+    if total_seconds <= 0:
+        return 0.0
+    if not events:
+        return 0.0
+    ordered = sorted((float(t), int(d)) for t, d in events)
+    active = 0
+    prev_t = 0.0
+    area = 0.0
+    for t, delta in ordered:
+        clamped = min(max(t, 0.0), total_seconds)
+        if clamped > prev_t:
+            area += active * (clamped - prev_t)
+            prev_t = clamped
+        active += delta
+    if prev_t < total_seconds:
+        area += active * (total_seconds - prev_t)
+    return area / total_seconds
+
+
+# ---------------------------------------------------------------------------
+# Backward-compatible wrappers (procedural API from enzu.isolation.scaling)
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class USLFit:
+    """Result of a procedural USL grid-search fit."""
+
+    sigma: float
+    kappa: float
+    x1: float
+    sse: float
+    r2: float
+    n_opt: float
+    max_throughput_estimate: float
+
+
+def usl_throughput(n: int, x1: float, sigma: float, kappa: float) -> float:
+    """Predicted throughput at concurrency *n* using explicit USL parameters."""
+    return USLModel(lambda_=x1, sigma=sigma, kappa=kappa).throughput(n)
+
+
+def fit_usl(points: Iterable[Tuple[int, float]]) -> USLFit:
+    """Fit USL via grid search (backward-compatible procedural API).
+
+    Wraps :class:`USLModel.fit` internally, then computes SSE / R² and
+    returns a frozen :class:`USLFit` dataclass.
+    """
+    prepared = sorted((int(n), float(x)) for n, x in points if int(n) > 0)
+    if not prepared:
+        raise ValueError("at least one point is required")
+
+    model = USLModel.fit(prepared)
+
+    # Compute SSE and R²
+    ys = [x for _, x in prepared]
+    mean_y = sum(ys) / len(ys)
+    sst = sum((y - mean_y) ** 2 for y in ys)
+    sse = sum((x - model.throughput(n)) ** 2 for n, x in prepared)
+
+    if sst <= 0:
+        r2 = 1.0 if sse <= 1e-12 else 0.0
+    else:
+        r2 = max(0.0, 1.0 - (sse / sst))
+
+    # Peak concurrency
+    if model.kappa > 0.0 and model.sigma < 1.0:
+        n_opt = math.sqrt((1.0 - model.sigma) / model.kappa)
+    else:
+        n_opt = float(max(n for n, _ in prepared))
+    n_opt_eval = max(1, int(round(n_opt)))
+    max_tp = model.throughput(n_opt_eval)
+
+    return USLFit(
+        sigma=model.sigma,
+        kappa=model.kappa,
+        x1=model.lambda_,
+        sse=sse,
+        r2=r2,
+        n_opt=n_opt,
+        max_throughput_estimate=max_tp,
     )
