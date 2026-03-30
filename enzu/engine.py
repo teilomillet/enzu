@@ -182,7 +182,7 @@ class Engine:
             usage: Dict[str, object] = {}
             successful_provider = provider
 
-            for current_provider in all_providers:
+            for provider_idx, current_provider in enumerate(all_providers):
                 try:
                     with telemetry.span(
                         "provider.stream", provider=current_provider.name
@@ -223,7 +223,7 @@ class Engine:
                             usage={},
                         )
                     )
-                    if current_provider == all_providers[-1]:
+                    if provider_idx == len(all_providers) - 1:
                         # Last provider failed, return error
                         errors.append(str(exc))
                         emit(
@@ -415,8 +415,22 @@ class Engine:
             output_text,
         )
         verification = VerificationResult(passed=False, reasons=["no_output"])
+
+        # Determine outcome for error paths
+        if budget_usage.limits_exceeded or (
+            errors and any("budget" in e.lower() for e in errors)
+        ):
+            outcome = Outcome.BUDGET_EXCEEDED
+        elif errors and any("provider" in e.lower() for e in errors):
+            outcome = Outcome.PROVIDER_ERROR
+        elif errors:
+            outcome = Outcome.PROVIDER_ERROR
+        else:
+            outcome = Outcome.PROVIDER_ERROR
+
         return ExecutionReport(
             success=False,
+            outcome=outcome,
             task_id=task.task_id,
             provider=provider.name,
             model=task.model,
