@@ -250,10 +250,13 @@ def test_engine_verification_edge_cases(output: str, substring: str):
     if report.outcome == Outcome.SUCCESS:
         assert report.success
 
-    # If output contains the substring, verification should pass
-    if substring in (report.output_text or ""):
+    # If output contains the substring AND output is non-whitespace,
+    # verification should pass. The engine treats whitespace-only output
+    # as "no_output" which fails verification regardless of content.
+    effective_output = report.output_text or ""
+    if substring in effective_output and effective_output.strip():
         assert report.verification.passed, (
-            f"Verification should pass when output contains '{substring}'"
+            f"Verification should pass when non-whitespace output contains '{substring}'"
         )
 
     # If verification failed, success must be False

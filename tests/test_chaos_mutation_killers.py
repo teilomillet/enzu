@@ -226,13 +226,20 @@ class TestFormatHistoryMutationKillers:
         assert "Data provided:" not in result
 
     def test_truncation_respects_max_chars(self):
-        """Kills: arithmetic L21 (+→-), negate L21, comparison L21 (>→>=)."""
+        """Kills: arithmetic L21 (+→-), negate L21, comparison L21 (>→>=),
+        break→continue (loop never stops without break)."""
         big = Exchange(user="x" * 500, assistant="y" * 500)
         exchanges = [big, big, big, big, big]
         result = format_history(exchanges, max_chars=200)
-        # Content portion (without header/footer) should be bounded
-        # Header+footer is ~50 chars, so total should be reasonable
+        # Content portion (without header/footer) should be bounded.
+        # If break→continue, all 5 exchanges (~5000 chars) would be included.
         assert len(result) < 400  # generous bound including header/footer
+        # Stronger: count how many exchanges made it in
+        count = result.count("User: ")
+        assert count < len(exchanges), (
+            f"All {len(exchanges)} exchanges included despite max_chars=200 "
+            f"(truncation break not working)"
+        )
 
     def test_most_recent_preserved(self):
         """Kills: delete L23 (reverse), delete L11 (reversed iteration)."""
@@ -283,6 +290,25 @@ class TestFormatHistoryMutationKillers:
         # At max_chars = part_len - 1, exchange does NOT fit
         result_under = format_history([ex], max_chars=exact_len - 1)
         assert result_under == ""
+
+    def test_break_stops_at_first_overflow(self):
+        """Kills: break→continue (L22).
+        With break: loop stops at the big exchange, only recent small one included.
+        With continue: loop skips big exchange, includes the OLD small one too.
+        We assert the old one is NOT in the result (break semantics)."""
+        old_small = Exchange(user="old", assistant="ok")
+        big_recent = Exchange(user="x" * 500, assistant="y" * 500)
+        small_recent = Exchange(user="new", assistant="hi")
+        # Order: old_small, big_recent, small_recent
+        # Reversed iteration: small_recent (fits), big_recent (doesn't fit → break)
+        # With break: only small_recent included
+        # With continue: small_recent included, big_recent skipped, old_small included
+        result = format_history([old_small, big_recent, small_recent], max_chars=100)
+        assert "new" in result, "most recent small exchange should be included"
+        assert "old" not in result, (
+            "old exchange should NOT be included — break should stop iteration "
+            "before reaching it"
+        )
 
     def test_two_exchanges_second_fits(self):
         """Kills: L12 boundary/constant (total init 0→1 breaks first iteration).
