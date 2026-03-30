@@ -1,0 +1,55 @@
+# ordeal.toml — Chaos testing configuration for enzu
+#
+# Run with:  ordeal explore
+# Or:        pytest --chaos tests/test_chaos_*.py
+
+[explorer]
+target_modules = ["enzu.budget", "enzu.engine", "enzu.session"]
+max_time = 60          # seconds (bump to 300+ for CI)
+seed = 42              # reproducible exploration
+max_checkpoints = 128
+checkpoint_prob = 0.4
+checkpoint_strategy = "energy"
+steps_per_run = 30
+fault_toggle_prob = 0.3
+workers = 0            # 0 = auto (cpu_count)
+
+[[tests]]
+class = "tests.test_chaos_budget:BudgetControllerChaos"
+steps_per_run = 40
+
+[[tests]]
+class = "tests.test_chaos_budget:ConcurrentBudgetChaos"
+steps_per_run = 20
+
+[[tests]]
+class = "tests.test_chaos_budget:TinyBudgetChaos"
+steps_per_run = 50
+
+[[tests]]
+class = "tests.test_chaos_engine:EngineChaos"
+steps_per_run = 20
+swarm = true
+
+[[tests]]
+class = "tests.test_chaos_engine:ProviderFallbackChaos"
+steps_per_run = 20
+
+[[tests]]
+class = "tests.test_chaos_session:SessionStateChaos"
+steps_per_run = 30
+
+[[tests]]
+class = "tests.test_chaos_session:ExchangeSerializationChaos"
+steps_per_run = 30
+
+[[tests]]
+class = "tests.test_chaos_session:HistoryFormattingChaos"
+steps_per_run = 20
+
+[report]
+format = "both"
+output = "ordeal-report.json"
+traces = true
+traces_dir = ".ordeal/traces"
+verbose = true

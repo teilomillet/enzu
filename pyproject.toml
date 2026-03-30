@@ -63,6 +63,8 @@ dev = [
     "pytest-xdist>=3.6.0",
     "ruff>=0.4.0",
     "ty>=0.0.14",
+    "ordeal>=0.1.17",
+    "hypothesis>=6.100.0",
 ]
 telemetry = ["logfire"]
 server = [

@@ -1,0 +1,3 @@
+[submodule "vendor/ordeal"]
+	path = vendor/ordeal
+	url = https://github.com/teilomillet/ordeal.git
