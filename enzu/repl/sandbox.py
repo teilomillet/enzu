@@ -297,9 +297,17 @@ def exec_code(
 
     Returns (result, updated_namespace) tuple.
     The namespace is mutated by exec(), so we return it for explicit data flow.
+    When callers provide a plain namespace, bootstrap the answer state needed
+    by FINAL/FINAL_VAR so stateless execution does not depend on
+    build_namespace().
     """
-    # Rebind FINAL_VAR to capture namespace lookups
-    answer_state = namespace["__rlm_answer__"]
+    answer_state = namespace.setdefault(
+        "__rlm_answer__", {"content": "", "ready": False}
+    )
+
+    def final_fn(content: Any) -> None:
+        answer_state["content"] = str(content)
+        answer_state["ready"] = True
 
     def final_var_fn(name: Any) -> None:
         if isinstance(name, str) and name in namespace:
@@ -309,6 +317,7 @@ def exec_code(
         answer_state["content"] = str(value)
         answer_state["ready"] = True
 
+    namespace.setdefault("FINAL", final_fn)
     namespace["FINAL_VAR"] = final_var_fn
 
     stdout_buffer = io.StringIO()

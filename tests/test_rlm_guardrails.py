@@ -446,6 +446,16 @@ class TestExecCodeFunctional:
         assert result.error is not None
         assert "division" in result.error.lower()
 
+    def test_exec_code_bootstraps_answer_state_for_plain_namespace(self) -> None:
+        result, updated_ns = exec_code(
+            code="FINAL('done')",
+            namespace={},
+            output_limit=1000,
+            timeout_seconds=None,
+        )
+        assert result.error is None
+        assert updated_ns["__rlm_answer__"] == {"content": "done", "ready": True}
+
     def test_namespace_persists_across_calls(self) -> None:
         namespace = build_namespace(
             data="test",
