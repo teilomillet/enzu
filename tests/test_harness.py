@@ -233,6 +233,19 @@ class TestHarnessIntegration:
 
         assert "imports ok" in result
 
+    def test_dev_profile_blocks_subprocess_even_with_pip_enabled(self) -> None:
+        """Dev profile should not widen imports beyond the configured allowlist."""
+        from enzu.repl.sandbox import PythonSandbox
+
+        sandbox = PythonSandbox(
+            data="test",
+            llm_query=lambda x: x,
+            security_profile="dev",
+        )
+        result = sandbox.exec("import subprocess\nprint('allowed')")
+
+        assert result.error == "Import blocked: subprocess"
+
     def test_non_harness_blocks_subprocess_import(self) -> None:
         """Without harness, import subprocess should be blocked by sandbox."""
         from tests.providers.mock_provider import MockProvider

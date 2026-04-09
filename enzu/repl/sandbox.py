@@ -67,14 +67,17 @@ class SandboxResult:
 
 
 def build_safe_builtins(
-    allowed_imports: Set[str], dynamic_imports: bool = False
+    allowed_imports: Set[str],
+    dynamic_imports: bool = False,
+    dynamic_import_roots: Optional[Set[str]] = None,
 ) -> Dict[str, Any]:
     """
     Build restricted builtins dict. Pure function.
 
     Args:
         allowed_imports: Static allowlist of module names
-        dynamic_imports: If True, allows any import (for pip-installed packages)
+        dynamic_imports: If True, also allows packages installed via pip_install()
+        dynamic_import_roots: Mutable set of import roots added after pip install
     """
     safe_names = [
         "abs",
@@ -105,8 +108,13 @@ def build_safe_builtins(
     # Use builtins module so sandbox setup works even when __builtins__ is a module.
     safe = {name: getattr(builtins, name) for name in safe_names}
 
+    dynamic_roots = dynamic_import_roots if dynamic_import_roots is not None else set()
+
     def restricted_import(name: str, *args: Any, **kwargs: Any) -> types.ModuleType:
-        if dynamic_imports or _is_import_allowed(name, allowed_imports):
+        root = name.split(".", 1)[0]
+        if _is_import_allowed(name, allowed_imports):
+            return __import__(name, *args, **kwargs)
+        if dynamic_imports and root in dynamic_roots:
             return __import__(name, *args, **kwargs)
         raise ImportError(f"Import blocked: {name}")
 
@@ -139,7 +147,7 @@ def build_namespace(
     - safe helpers: defensive patterns for error-free execution
     """
     answer_state = {"content": "", "ready": False}
-    installed_packages: Set[str] = set()
+    dynamic_import_roots: Set[str] = set()
 
     def final_fn(content: Any) -> None:
         answer_state["content"] = str(content)
@@ -159,6 +167,7 @@ def build_namespace(
         Returns: Status message listing installed packages.
         """
         import importlib
+        from importlib import metadata as importlib_metadata
         import shutil
         import subprocess
         import sys
@@ -187,7 +196,23 @@ def build_namespace(
                         stdout=subprocess.DEVNULL,
                         stderr=subprocess.PIPE,
                     )
-                installed_packages.add(package)
+                normalized = package.strip()
+                for marker in ("[", "<", ">", "=", "!", "~"):
+                    if marker in normalized:
+                        normalized = normalized.split(marker, 1)[0]
+                normalized = normalized.strip()
+                if normalized:
+                    dynamic_import_roots.add(normalized.replace("-", "_"))
+                    try:
+                        dist = importlib_metadata.distribution(normalized)
+                    except importlib_metadata.PackageNotFoundError:
+                        pass
+                    else:
+                        top_level = dist.read_text("top_level.txt") or ""
+                        for line in top_level.splitlines():
+                            root = line.strip()
+                            if root:
+                                dynamic_import_roots.add(root)
                 results.append(f"✓ {package}")
             except subprocess.CalledProcessError as exc:
                 err = exc.stderr.decode() if exc.stderr else ""
@@ -202,7 +227,9 @@ def build_namespace(
 
     namespace: Dict[str, Any] = {
         "__builtins__": build_safe_builtins(
-            allowed_imports, dynamic_imports=enable_pip
+            allowed_imports,
+            dynamic_imports=enable_pip,
+            dynamic_import_roots=dynamic_import_roots if enable_pip else None,
         ),
         "data": data,
         "context": context_value,
@@ -211,7 +238,7 @@ def build_namespace(
         "query": llm_query,
         "FINAL": final_fn,
         "FINAL_VAR": final_var_fn,
-        "__installed_packages__": installed_packages,
+        "__installed_packages__": dynamic_import_roots,
         "__search_tools_available__": False,
     }
 
@@ -297,13 +324,20 @@ def exec_code(
 
     Returns (result, updated_namespace) tuple.
     The namespace is mutated by exec(), so we return it for explicit data flow.
-    When callers provide a plain namespace, bootstrap the answer state needed
-    by FINAL/FINAL_VAR so stateless execution does not depend on
+    When callers provide a plain namespace, bootstrap the answer state and
+    restricted builtins so stateless execution does not depend on
     build_namespace().
     """
     answer_state = namespace.setdefault(
         "__rlm_answer__", {"content": "", "ready": False}
     )
+    dynamic_import_roots = namespace.setdefault("__installed_packages__", set())
+    if "__builtins__" not in namespace:
+        namespace["__builtins__"] = build_safe_builtins(
+            allowed_imports or set(),
+            dynamic_imports=allowed_imports is None,
+            dynamic_import_roots=dynamic_import_roots if allowed_imports is None else None,
+        )
 
     def final_fn(content: Any) -> None:
         answer_state["content"] = str(content)
@@ -490,8 +524,7 @@ def validate_code_safety(code: str, allowed_imports: Optional[Set[str]] = None) 
     Args:
         code: Python code to validate
         allowed_imports: Set of module names allowed for import.
-            None = skip import validation (used when pip is enabled
-            and any package may be imported).
+            None = skip import allowlist checks, but still block dunder access.
     """
     try:
         tree = ast.parse(code)
@@ -499,22 +532,20 @@ def validate_code_safety(code: str, allowed_imports: Optional[Set[str]] = None) 
         # Let exec() surface syntax errors to keep feedback consistent.
         return
 
-    # When allowed_imports is None, skip import and dunder checks entirely.
-    # This is the pip-enabled / dynamic-imports path where the runtime
-    # import hook handles security and installed packages need dunder access.
-    if allowed_imports is None:
-        return
-
     violations: list[str] = []
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
-            # Check each imported module name against allowed list
-            for alias in node.names:
-                if not _is_import_allowed(alias.name, allowed_imports):
-                    violations.append(f"import blocked: {alias.name}")
+            if allowed_imports is not None:
+                # Check each imported module name against allowed list
+                for alias in node.names:
+                    if not _is_import_allowed(alias.name, allowed_imports):
+                        violations.append(f"import blocked: {alias.name}")
         elif isinstance(node, ast.ImportFrom):
-            # Check the module being imported from
-            if node.module and not _is_import_allowed(node.module, allowed_imports):
+            if (
+                allowed_imports is not None
+                and node.module
+                and not _is_import_allowed(node.module, allowed_imports)
+            ):
                 violations.append(f"import blocked: {node.module}")
         elif isinstance(node, ast.Attribute) and node.attr.startswith("__"):
             # Block dunder attribute access to prevent sandbox escapes.

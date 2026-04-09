@@ -12,17 +12,19 @@ Tests cover:
 
 from __future__ import annotations
 
+import pytest
 
 from enzu.models import StepFeedback, SuccessCriteria, TaskSpec
 from enzu.repl import (
     PythonSandbox,
-    exec_code,
     build_namespace,
+    exec_code,
     safe_get,
     safe_rows,
     safe_sort,
 )
 from enzu.models import Budget
+from enzu.repl.sandbox import SandboxViolation, validate_code_safety
 
 # Feedback functions extracted to rlm/feedback.py for modularity
 from enzu.rlm.feedback import (
@@ -456,6 +458,28 @@ class TestExecCodeFunctional:
         assert result.error is None
         assert updated_ns["__rlm_answer__"] == {"content": "done", "ready": True}
 
+    def test_exec_code_bootstraps_restricted_builtins_for_plain_namespace(self) -> None:
+        result, updated_ns = exec_code(
+            code="import os",
+            namespace={},
+            output_limit=1000,
+            timeout_seconds=None,
+            allowed_imports=None,
+        )
+        assert result.error == "Import blocked: os"
+        assert "__builtins__" in updated_ns
+
+    def test_exec_code_plain_namespace_honors_allowlisted_imports(self) -> None:
+        result, _ = exec_code(
+            code="import json\nprint(json.dumps({'ok': True}, sort_keys=True))",
+            namespace={},
+            output_limit=1000,
+            timeout_seconds=None,
+            allowed_imports={"json"},
+        )
+        assert result.error is None
+        assert '{"ok": true}' in result.stdout
+
     def test_namespace_persists_across_calls(self) -> None:
         namespace = build_namespace(
             data="test",
@@ -563,6 +587,15 @@ class TestSafeHelperFunctions:
     def test_safe_sort_no_key(self) -> None:
         data = [1, 2, 3]
         assert safe_sort(data) == [1, 2, 3]  # Returns as-is
+
+
+class TestValidateCodeSafety:
+    def test_dunder_access_blocked_even_with_dynamic_imports(self) -> None:
+        with pytest.raises(SandboxViolation, match="dunder"):
+            validate_code_safety(
+                "().__class__.__bases__[0].__subclasses__()",
+                allowed_imports=None,
+            )
 
 
 class TestBudgetPercentage:
